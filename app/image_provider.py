@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Protocol
 
 from openai import OpenAI
@@ -21,18 +20,13 @@ class ImageProvider(Protocol):
 
 
 class OpenAIImageProvider:
-    def __init__(self, api_key_file: Path) -> None:
-        self.api_key_file = api_key_file
+    def __init__(self, api_key: str | None) -> None:
+        self.api_key = api_key
 
     def _read_api_key(self) -> str:
-        try:
-            api_key = self.api_key_file.read_text(encoding="utf-8").strip()
-        except OSError as exc:
-            raise RuntimeError(
-                f"OpenAI secret sa nepodarilo načítať zo súboru {self.api_key_file}."
-            ) from exc
+        api_key = (self.api_key or "").strip()
         if not api_key:
-            raise RuntimeError("OpenAI secret je prázdny.")
+            raise RuntimeError("Premenná OPENAI_API_KEY nie je nastavená.")
         return api_key
 
     def generate(self, prompt: str, orientation: Orientation) -> GeneratedImage:

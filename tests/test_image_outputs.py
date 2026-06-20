@@ -59,7 +59,7 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
     settings = Settings(
         db_path=tmp_path / "app.db",
         colorings_dir=tmp_path / "colorings",
-        openai_api_key_file=tmp_path / "secret",
+        openai_api_key="test-api-key",
     )
     with TestClient(create_app(settings, image_provider=Provider(), start_worker=True)) as client:
         response = client.post(

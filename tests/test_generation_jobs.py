@@ -39,7 +39,7 @@ def make_settings(tmp_path: Path) -> Settings:
     return Settings(
         db_path=tmp_path / "app.db",
         colorings_dir=tmp_path / "colorings",
-        openai_api_key_file=tmp_path / "secret",
+        openai_api_key="test-api-key",
     )
 
 

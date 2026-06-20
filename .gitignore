@@ -8,4 +8,3 @@ data/*
 !data/.gitkeep
 playwright-report/
 test-results/
-secrets/openai_api_key

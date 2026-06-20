@@ -42,7 +42,7 @@ def live_app(tmp_path: Path):
     settings = Settings(
         db_path=tmp_path / "app.db",
         colorings_dir=tmp_path / "colorings",
-        openai_api_key_file=tmp_path / "secret",
+        openai_api_key="test-api-key",
     )
     app = create_app(
         settings,
@@ -129,4 +129,3 @@ def test_mobile_builder_has_no_horizontal_overflow(live_app: str) -> None:
         assert page.get_by_role("button", name="Autá").get_attribute("aria-pressed") == "true"
         assert page.get_by_role("button", name="Bleskový McQueen").get_attribute("aria-pressed") == "true"
         browser.close()
-

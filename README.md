@@ -26,20 +26,10 @@ python -m playwright install chromium
 uvicorn app.main:app --reload --port 8081
 ```
 
-Otvorte `http://localhost:8081`.
-
-Pre skutočné generovanie vytvorte secret:
+Otvorte `http://localhost:8081`. Pri lokálnom spustení bez Dockeru nastavte API kľúč ako environment premennú:
 
 ```bash
-mkdir -p secrets
-printf '%s' 'sk-...' > secrets/openai_api_key
-chmod 600 secrets/openai_api_key
-```
-
-Pri lokálnom spustení bez Dockeru nastavte cestu:
-
-```bash
-OPENAI_API_KEY_FILE="$PWD/secrets/openai_api_key" \
+OPENAI_API_KEY="sk-..." \
   uvicorn app.main:app --reload --port 8081
 ```
 
@@ -62,12 +52,20 @@ docker compose up -d --build
 Predvolená adresa je `http://localhost:8081`. Nastavenia možno uložiť do `.env`:
 
 ```dotenv
+OPENAI_API_KEY=sk-...
 OMALOVANKY_PORT=8081
 OMALOVANKY_DATA_DIR=/srv/appdata/omalovanky
-OPENAI_API_KEY_FILE=/srv/secrets/openai_api_key
 ```
 
-Databáza a obrázky sú uložené v `OMALOVANKY_DATA_DIR`. API kľúč je pripojený ako Docker secret do `/run/secrets/openai_api_key`; nie je uložený v Git repozitári ani databáze.
+Databáza a obrázky sú uložené v `OMALOVANKY_DATA_DIR`. Compose odovzdá `OPENAI_API_KEY` kontajneru priamo z `.env` alebo zo secret environment poľa vášho Compose pluginu. Kľúč nie je uložený v Git repozitári ani databáze; `.env` je v `.gitignore` a `.dockerignore`.
+
+Pri nasadení cez webový Compose plugin vložte obsah `docker-compose.yml` a do jeho Environment/secret env časti pridajte:
+
+```dotenv
+OPENAI_API_KEY=sk-...
+OMALOVANKY_DATA_DIR=/srv/appdata/omalovanky
+OMALOVANKY_PORT=8081
+```
 
 ## Raspberry Pi a Tailscale
 
@@ -123,4 +121,3 @@ Príklad zadania:
 - Presné postavy nemusia byť pri každom AI pokuse dokonale konzistentné. UI preto ponúka opakovanie.
 - `IMPLEMENTATION.md` obsahuje chronologický denník implementácie a testov.
 - Projekt je licencovaný pod GPL‑3.0.
-

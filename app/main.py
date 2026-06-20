@@ -35,7 +35,7 @@ def create_app(
 ) -> FastAPI:
     resolved_settings = app_settings or settings
     storage = Storage(resolved_settings.db_path)
-    provider = image_provider or OpenAIImageProvider(resolved_settings.openai_api_key_file)
+    provider = image_provider or OpenAIImageProvider(resolved_settings.openai_api_key)
     worker = GenerationWorker(
         storage=storage,
         image_provider=provider,
@@ -133,7 +133,7 @@ def create_app(
             "status": "ok",
             "database_parent_ready": resolved_settings.db_path.parent.exists(),
             "colorings_dir_ready": resolved_settings.colorings_dir.exists(),
-            "openai_secret_present": resolved_settings.has_openai_secret,
+            "openai_api_key_present": resolved_settings.has_openai_api_key,
             "worker_alive": worker.is_alive() if start_worker else False,
         }
 

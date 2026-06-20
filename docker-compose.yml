@@ -7,14 +7,8 @@ services:
     ports:
       - "${OMALOVANKY_PORT:-8081}:8080"
     environment:
-      - APP_DB_PATH=/data/app.db
-      - COLORINGS_DIR=/data/colorings
-      - OPENAI_API_KEY_FILE=/run/secrets/openai_api_key
+      APP_DB_PATH: /data/app.db
+      COLORINGS_DIR: /data/colorings
+      OPENAI_API_KEY: "${OPENAI_API_KEY:?Set OPENAI_API_KEY in the Compose environment}"
     volumes:
       - ${OMALOVANKY_DATA_DIR:-./data}:/data
-    secrets:
-      - openai_api_key
-
-secrets:
-  openai_api_key:
-    file: ${OPENAI_API_KEY_FILE:-./secrets/openai_api_key}

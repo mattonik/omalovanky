@@ -80,3 +80,13 @@
   - `docker-compose.yml` prešiel príkazom `docker-compose config` vo verzii 5.1.3; oba GitHub Actions workflowy prešli YAML parserom.
 - Commit: `Add E2E CI and Raspberry Pi deployment`.
 - Zostáva: finálne porovnanie screenshotov, push a kontrola pracovného stromu.
+
+## 2026-06-20 — Zmena konfigurácie: OpenAI kľúč v Compose `.env`
+
+- Rozsah: nahradenie mounted Docker secret súboru premennou `OPENAI_API_KEY`, ktorú Compose načíta z `.env` alebo secret environment poľa serverového Compose pluginu.
+- Zmenené subsystémy: runtime konfigurácia, OpenAI provider, healthcheck, Docker Compose, `.env.example`, testy a deployment dokumentácia.
+- Rozhodnutia: Compose odmietne štart bez `OPENAI_API_KEY`; hodnota sa neposiela do image, databázy ani Git repozitára.
+- Testy:
+  - `./scripts/check.sh` — úspech: 19 unit/integration testov, 2 Playwright E2E testy a Docker build.
+  - `OPENAI_API_KEY=<test> docker-compose config` — úspešná interpolácia env premennej; výsledná konfigurácia neobsahuje Compose `secrets`.
+- Commit: `Read OpenAI key from Compose environment`.
