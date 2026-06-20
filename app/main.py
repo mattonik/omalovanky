@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -100,6 +101,32 @@ def create_app(
         except GenerationNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.get("/api/colorings", response_model=list[GenerationStatus])
+    def list_colorings(limit: int = Query(default=20, ge=1, le=20)):
+        return [serialize_generation(item) for item in storage.list_completed(limit)]
+
+    @app.get("/colorings/{generation_id}.png")
+    def download_png(generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        return serve_file(item["png_path"], "image/png", f"omalovanka-{generation_id}.png")
+
+    @app.get("/colorings/{generation_id}.pdf")
+    def download_pdf(generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        return serve_file(item["pdf_path"], "application/pdf", f"omalovanka-{generation_id}.pdf")
+
+    @app.get("/colorings/{generation_id}/print")
+    def print_coloring(request: Request, generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        return templates.TemplateResponse(
+            request=request,
+            name="print.html",
+            context={
+                "generation_id": generation_id,
+                "orientation": item["request"]["orientation"],
+            },
+        )
+
     @app.get("/healthz")
     def healthcheck():
         return {
@@ -128,3 +155,22 @@ def serialize_generation(item: dict) -> GenerationStatus:
         pdf_url=f"/colorings/{generation_id}.pdf" if done and item["pdf_path"] else None,
         print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
     )
+
+
+def require_completed_generation(storage: Storage, generation_id: int) -> dict:
+    try:
+        item = storage.get_generation(generation_id)
+    except GenerationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if item["status"] != "done":
+        raise HTTPException(status_code=409, detail="Omaľovánka ešte nie je hotová.")
+    return item
+
+
+def serve_file(raw_path: str | None, media_type: str, filename: str) -> FileResponse:
+    if not raw_path:
+        raise HTTPException(status_code=404, detail="Výstupný súbor neexistuje.")
+    path = Path(raw_path)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Výstupný súbor sa nenašiel na disku.")
+    return FileResponse(path, media_type=media_type, filename=filename)

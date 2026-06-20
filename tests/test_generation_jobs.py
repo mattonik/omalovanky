@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import io
 import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from app.config import Settings
 from app.image_provider import GeneratedImage
@@ -13,16 +15,19 @@ from app.schemas import GenerationRequest
 from app.storage import Storage
 from app.worker import GenerationWorker
 
-PNG_BYTES = (
-    b"\x89PNG\r\n\x1a\n"
-    b"\x00\x00\x00\rIHDR"
-    b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00"
-)
+def make_png_bytes(size: tuple[int, int] = (320, 420)) -> bytes:
+    image = Image.new("RGB", size, "white")
+    for x in range(40, size[0] - 40):
+        image.putpixel((x, 80), (0, 0, 0))
+        image.putpixel((x, size[1] - 80), (0, 0, 0))
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 class FakeImageProvider:
-    def __init__(self, content: bytes = PNG_BYTES) -> None:
-        self.content = content
+    def __init__(self, content: bytes | None = None) -> None:
+        self.content = content or make_png_bytes()
         self.calls: list[tuple[str, str]] = []
 
     def generate(self, prompt: str, orientation: str) -> GeneratedImage:
@@ -79,7 +84,9 @@ def test_worker_generates_source_image_and_marks_job_done(tmp_path: Path) -> Non
     completed = storage.get_generation(job["id"])
     assert completed["status"] == "done"
     assert completed["provider_request_id"] == "req-test-123"
-    assert Path(completed["source_path"]).read_bytes() == PNG_BYTES
+    assert Path(completed["source_path"]).read_bytes() == provider.content
+    assert Path(completed["png_path"]).is_file()
+    assert Path(completed["pdf_path"]).is_file()
     assert provider.calls[0][1] == "landscape"
 
 
@@ -114,5 +121,6 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
             time.sleep(0.02)
 
     assert status_payload["status"] == "done"
+    assert status_payload["png_url"] == f"/colorings/{generation_id}.png"
+    assert status_payload["pdf_url"] == f"/colorings/{generation_id}.pdf"
     assert len(provider.calls) == 1
-

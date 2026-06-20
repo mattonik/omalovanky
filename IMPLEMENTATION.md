@@ -36,3 +36,16 @@
   - `.venv/bin/pytest -q` — 13 testov úspešných vrátane súbehu, workera a obnovy po reštarte.
 - Commit: `Implement generation queue and OpenAI provider`.
 - Zostáva: tlačové spracovanie, história, UI, E2E a GitHub Actions.
+
+## 2026-06-20 — Míľnik 4: PNG, PDF, tlač a retencia
+
+- Rozsah: čistá čiernobiela A4 rasterizácia pri 300 DPI, A4 PDF, download/print endpointy, posledných 20 výsledkov a odstránenie starších súborov.
+- Zmenené subsystémy: Pillow/ReportLab processor, worker dokončovanie, úložisko, súborové endpointy a print šablóna.
+- Rozhodnutia: PNG má 2480×3508 px na výšku alebo 3508×2480 px na šírku; PDF používa 12 mm bezpečný okraj.
+- Známe obmedzenia: prahovanie je zámerne agresívne pre čistú omaľovánku; veľmi jemné sivé detaily sa odstránia.
+- Testy:
+  - `.venv/bin/python -m py_compile app/*.py tests/*.py` — úspech.
+  - `.venv/bin/pytest -q` — 16 testov úspešných.
+  - Prvý integračný beh odhalil príliš rýchly polling v teste; test bol opravený na časový deadline zhodný s produkčným správaním.
+- Commit: `Add printable outputs and retention`.
+- Zostáva: finálne UI, E2E, vizuálna QA a GitHub Actions.

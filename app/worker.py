@@ -4,6 +4,7 @@ import threading
 from pathlib import Path
 
 from .image_provider import ImageProvider
+from .image_processing import ColoringProcessor
 from .schemas import GenerationRequest
 from .storage import Storage
 
@@ -15,11 +16,13 @@ class GenerationWorker:
         storage: Storage,
         image_provider: ImageProvider,
         colorings_dir: Path,
+        processor: ColoringProcessor | None = None,
         poll_seconds: float = 0.25,
     ) -> None:
         self.storage = storage
         self.image_provider = image_provider
         self.colorings_dir = colorings_dir
+        self.processor = processor or ColoringProcessor()
         self.poll_seconds = poll_seconds
         self._stop_event = threading.Event()
         self._wake_event = threading.Event()
@@ -60,14 +63,30 @@ class GenerationWorker:
             self.colorings_dir.mkdir(parents=True, exist_ok=True)
             source_path = self.colorings_dir / f"{generation_id}-source.png"
             source_path.write_bytes(generated.content)
+            processed = self.processor.process(
+                generation_id=generation_id,
+                source_path=source_path,
+                output_dir=self.colorings_dir,
+                orientation=request.orientation,
+            )
             self.storage.mark_generation_done(
                 generation_id,
                 source_path=str(source_path),
                 provider_request_id=generated.request_id,
+                png_path=str(processed.png_path),
+                pdf_path=str(processed.pdf_path),
             )
+            self._prune_old_files()
         except Exception as exc:  # noqa: BLE001
             self.storage.mark_generation_failed(generation_id, self._friendly_error(exc))
         return True
+
+    def _prune_old_files(self) -> None:
+        for raw_path in self.storage.prune_completed(keep=20):
+            try:
+                Path(raw_path).unlink(missing_ok=True)
+            except OSError:
+                continue
 
     def _run(self) -> None:
         while not self._stop_event.is_set():
@@ -86,4 +105,3 @@ class GenerationWorker:
         if status_code == 429:
             return "OpenAI limit je momentálne vyčerpaný. Skúste to neskôr."
         return str(error) or "Generovanie zlyhalo bez bližšieho popisu."
-
