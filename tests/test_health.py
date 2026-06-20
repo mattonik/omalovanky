@@ -13,7 +13,7 @@ def test_healthcheck_reports_ready_directories(tmp_path: Path) -> None:
         openai_api_key_file=tmp_path / "missing-secret",
     )
 
-    with TestClient(create_app(settings)) as client:
+    with TestClient(create_app(settings, start_worker=False)) as client:
         response = client.get("/healthz")
 
     assert response.status_code == 200
@@ -22,6 +22,7 @@ def test_healthcheck_reports_ready_directories(tmp_path: Path) -> None:
         "database_parent_ready": True,
         "colorings_dir_ready": True,
         "openai_secret_present": False,
+        "worker_alive": False,
     }
 
 
@@ -32,10 +33,9 @@ def test_homepage_is_slovak(tmp_path: Path) -> None:
         openai_api_key_file=tmp_path / "secret",
     )
 
-    with TestClient(create_app(settings)) as client:
+    with TestClient(create_app(settings, start_worker=False)) as client:
         response = client.get("/")
 
     assert response.status_code == 200
     assert 'lang="sk"' in response.text
     assert "Čarovné omaľovánky" in response.text
-

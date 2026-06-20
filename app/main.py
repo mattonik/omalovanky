@@ -1,27 +1,60 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .catalog import catalog_payload
 from .config import Settings, settings
+from .image_provider import ImageProvider, OpenAIImageProvider
+from .prompting import build_image_prompt
+from .schemas import GenerationRequest, GenerationStatus
+from .storage import ActiveGenerationError, GenerationNotFoundError, Storage
+from .worker import GenerationWorker
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
-def create_app(app_settings: Settings | None = None) -> FastAPI:
+@dataclass(slots=True)
+class Services:
+    storage: Storage
+    worker: GenerationWorker
+
+
+def create_app(
+    app_settings: Settings | None = None,
+    *,
+    image_provider: ImageProvider | None = None,
+    start_worker: bool = True,
+) -> FastAPI:
     resolved_settings = app_settings or settings
+    storage = Storage(resolved_settings.db_path)
+    provider = image_provider or OpenAIImageProvider(resolved_settings.openai_api_key_file)
+    worker = GenerationWorker(
+        storage=storage,
+        image_provider=provider,
+        colorings_dir=resolved_settings.colorings_dir,
+    )
+    services = Services(storage=storage, worker=worker)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         resolved_settings.db_path.parent.mkdir(parents=True, exist_ok=True)
         resolved_settings.colorings_dir.mkdir(parents=True, exist_ok=True)
-        yield
+        storage.init_db()
+        storage.recover_interrupted_generations()
+        if start_worker:
+            worker.start()
+        try:
+            yield
+        finally:
+            if start_worker:
+                worker.stop()
 
     app = FastAPI(
         title="Čarovné omaľovánky",
@@ -29,6 +62,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = resolved_settings
+    app.state.services = services
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
     @app.get("/")
@@ -43,6 +77,29 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     def get_catalog():
         return catalog_payload()
 
+    @app.post(
+        "/api/generations",
+        response_model=GenerationStatus,
+        status_code=status.HTTP_202_ACCEPTED,
+    )
+    def create_generation(payload: GenerationRequest):
+        try:
+            item = storage.create_generation(payload, build_image_prompt(payload))
+        except ActiveGenerationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "generation_in_progress", "message": str(exc)},
+            ) from exc
+        worker.wake()
+        return serialize_generation(item)
+
+    @app.get("/api/generations/{generation_id}", response_model=GenerationStatus)
+    def get_generation(generation_id: int):
+        try:
+            return serialize_generation(storage.get_generation(generation_id))
+        except GenerationNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @app.get("/healthz")
     def healthcheck():
         return {
@@ -50,9 +107,24 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
             "database_parent_ready": resolved_settings.db_path.parent.exists(),
             "colorings_dir_ready": resolved_settings.colorings_dir.exists(),
             "openai_secret_present": resolved_settings.has_openai_secret,
+            "worker_alive": worker.is_alive() if start_worker else False,
         }
 
     return app
 
 
 app = create_app()
+
+
+def serialize_generation(item: dict) -> GenerationStatus:
+    generation_id = int(item["id"])
+    done = item["status"] == "done"
+    return GenerationStatus(
+        id=generation_id,
+        status=item["status"],
+        request=GenerationRequest.model_validate(item["request"]),
+        error=item["error"],
+        png_url=f"/colorings/{generation_id}.png" if done and item["png_path"] else None,
+        pdf_url=f"/colorings/{generation_id}.pdf" if done and item["pdf_path"] else None,
+        print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
+    )
