@@ -1,0 +1,17 @@
+:root {
+  color: #172b57;
+  background: #ffffff;
+  font-family: ui-rounded, "Nunito", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+main {
+  text-align: center;
+}
+

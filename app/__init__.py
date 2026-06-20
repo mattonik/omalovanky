@@ -1,0 +1,2 @@
+"""Čarovné omaľovánky application package."""
+
