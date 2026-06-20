@@ -77,6 +77,6 @@
   - Vizuálna QA na 1449×1086 porovnala schválený builder aj výsledkový koncept s implementáciou.
   - Opravené počas fidelity iterácie: príliš vysoké desktopové kategórie, chýbajúci favicon, miniatúrna kresba spôsobená `thumbnail()` a roztiahnutá jediná karta histórie.
   - Above-the-fold copy sa zhoduje so schváleným konceptom; jediná zámerná odchýlka je znak `+` medzi názvami kombinovaných postáv.
-  - `docker-compose.yml` a oba GitHub Actions workflowy prešli YAML parserom. Lokálny Docker CLI nemá Compose plugin, takže `docker compose config` nebolo na tomto stroji dostupné.
+  - `docker-compose.yml` prešiel príkazom `docker-compose config` vo verzii 5.1.3; oba GitHub Actions workflowy prešli YAML parserom.
 - Commit: `Add E2E CI and Raspberry Pi deployment`.
 - Zostáva: finálne porovnanie screenshotov, push a kontrola pracovného stromu.
