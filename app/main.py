@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .catalog import catalog_payload
 from .config import Settings, settings
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,8 +36,12 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         return templates.TemplateResponse(
             request=request,
             name="index.html",
-            context={},
+            context={"catalog": catalog_payload()},
         )
+
+    @app.get("/api/catalog")
+    def get_catalog():
+        return catalog_payload()
 
     @app.get("/healthz")
     def healthcheck():
@@ -51,4 +56,3 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
 
 
 app = create_app()
-

@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, WORLD_BY_ID
+
+Orientation = Literal["portrait", "landscape"]
+
+
+class GenerationRequest(BaseModel):
+    worlds: list[str] = Field(min_length=1, max_length=4)
+    characters: list[str] = Field(min_length=1, max_length=4)
+    action: str
+    custom_idea: str = Field(default="", max_length=300)
+    orientation: Orientation = "portrait"
+
+    @field_validator("worlds")
+    @classmethod
+    def validate_worlds(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("Svety sa nesmú opakovať.")
+        unknown = [value for value in values if value not in WORLD_BY_ID]
+        if unknown:
+            raise ValueError(f"Neznáme svety: {', '.join(unknown)}")
+        return values
+
+    @field_validator("characters")
+    @classmethod
+    def validate_characters(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("Postavy sa nesmú opakovať.")
+        unknown = [value for value in values if value not in CHARACTER_BY_ID]
+        if unknown:
+            raise ValueError(f"Neznáme postavy: {', '.join(unknown)}")
+        return values
+
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, value: str) -> str:
+        if value not in ACTION_BY_ID:
+            raise ValueError("Neznáma akcia.")
+        return value
+
+    @field_validator("custom_idea")
+    @classmethod
+    def normalize_custom_idea(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    @model_validator(mode="after")
+    def validate_character_worlds(self) -> "GenerationRequest":
+        selected_worlds = set(self.worlds)
+        missing_worlds = {
+            CHARACTER_BY_ID[character_id].world_id
+            for character_id in self.characters
+            if CHARACTER_BY_ID[character_id].world_id not in selected_worlds
+        }
+        if missing_worlds:
+            labels = ", ".join(WORLD_BY_ID[item].label for item in sorted(missing_worlds))
+            raise ValueError(f"Pre vybrané postavy chýbajú svety: {labels}.")
+        return self
+
+
+class GenerationStatus(BaseModel):
+    id: int
+    status: Literal["queued", "running", "done", "failed"]
+    request: GenerationRequest
+    error: str | None = None
+    png_url: str | None = None
+    pdf_url: str | None = None
+    print_url: str | None = None
+
