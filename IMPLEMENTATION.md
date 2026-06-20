@@ -49,3 +49,18 @@
   - Prvý integračný beh odhalil príliš rýchly polling v teste; test bol opravený na časový deadline zhodný s produkčným správaním.
 - Commit: `Add printable outputs and retention`.
 - Zostáva: finálne UI, E2E, vizuálna QA a GitHub Actions.
+
+## 2026-06-20 — Míľnik 5: responzívne používateľské rozhranie
+
+- Rozsah: kompletný tablet-first builder, loading stav, výsledková obrazovka, opakovanie, download/tlač akcie a pás posledných omaľovánok.
+- Zmenené subsystémy: Jinja šablóna, CSS design systém, JavaScript stav a API klient, generované kategóriové assety.
+- Rozhodnutia: vizuálne náhľady svetov sú originálne generické ilustrácie bez log; presné názvy chránených postáv ostávajú v textových voľbách a serverovom prompte.
+- Známe obmedzenia: jednotlivé pomenované postavy používajú konzistentné symbolické avatary, nie oficiálne artworky.
+- Testy:
+  - `.venv/bin/python -m py_compile app/*.py tests/*.py` — úspech.
+  - `.venv/bin/pytest -q` — 16 testov úspešných.
+  - Playwright QA na 1449×1086 a 390×844 — správny titulok/H1, selected stavy postavy, automatický výber sveta, prepnutie orientácie a žiadny horizontálny overflow.
+  - Konzola po doplnení faviconu bez warningov a chýb.
+  - In-app Browser fallback: pripojenie zlyhalo na chýbajúcej sandbox metadáte; vizuálna kontrola preto použila samostatný Playwright runtime.
+- Commit: `Build responsive coloring generator UI`.
+- Zostáva: browser fidelity iterácia, E2E, CI, GHCR workflow a deployment dokumentácia.

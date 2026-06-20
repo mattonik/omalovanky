@@ -6,4 +6,4 @@ __pycache__
 *.pyc
 data
 tests
-
+app/static/assets/worlds-sprite.png

@@ -3,14 +3,205 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
     <title>Čarovné omaľovánky</title>
+    <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <main>
-      <h1>Čarovné omaľovánky</h1>
-      <p>Pripravujeme kúzelný generátor.</p>
+    <header class="app-header">
+      <a class="brand" href="/" aria-label="Čarovné omaľovánky – domov">
+        <span class="brand-mark" aria-hidden="true">★</span>
+        <span>Čarovné omaľovánky</span>
+      </a>
+      <div class="app-status" id="appStatus">
+        <span class="status-dot"></span>
+        <span>Pripravené na tvorenie</span>
+      </div>
+      <div class="header-actions" aria-hidden="true">
+        <span class="round-icon">?</span>
+        <span class="round-icon">⚙</span>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section id="builderView" class="view builder-view">
+        <div class="intro">
+          <span class="sparkle sparkle-left" aria-hidden="true">✦</span>
+          <h1>Čo dnes vyfarbíme?</h1>
+          <span class="sparkle sparkle-right" aria-hidden="true">✦</span>
+          <p>Vyber postavy, akciu a papier. O zvyšok sa postará kúzlo.</p>
+        </div>
+
+        <form id="generationForm">
+          <fieldset class="builder-section">
+            <legend><span>1.</span> Vyber svet</legend>
+            <div class="world-grid">
+              {% for world in catalog.worlds %}
+                <button
+                  class="world-card {% if world.id in ['princesses', 'unicorns'] %}selected{% endif %}"
+                  type="button"
+                  data-world-id="{{ world.id }}"
+                  aria-pressed="{{ 'true' if world.id in ['princesses', 'unicorns'] else 'false' }}"
+                >
+                  <span class="selection-check" aria-hidden="true">✓</span>
+                  <img
+                    src="/static/assets/world-{{ world.id }}.png"
+                    alt=""
+                    width="627"
+                    height="627"
+                  />
+                  <strong>{{ world.label }}</strong>
+                </button>
+              {% endfor %}
+            </div>
+          </fieldset>
+
+          <fieldset class="builder-section">
+            <legend><span>2.</span> Kto bude na obrázku?</legend>
+            <div class="character-rail" id="characterRail">
+              {% for character in catalog.characters %}
+                <button
+                  class="character-card {% if character.id in ['princess', 'unicorn'] %}selected{% endif %}"
+                  type="button"
+                  data-character-id="{{ character.id }}"
+                  data-world-id="{{ character.world_id }}"
+                  aria-pressed="{{ 'true' if character.id in ['princess', 'unicorn'] else 'false' }}"
+                >
+                  <span class="selection-check" aria-hidden="true">✓</span>
+                  <span class="character-avatar world-{{ character.world_id }}" aria-hidden="true">
+                    {{ character.icon }}
+                  </span>
+                  <strong>{{ character.label }}</strong>
+                </button>
+              {% endfor %}
+            </div>
+            <p class="selection-hint" id="selectionHint">Môžeš vybrať najviac 4 postavy.</p>
+          </fieldset>
+
+          <fieldset class="builder-section action-section">
+            <legend><span>3.</span> Čo robia?</legend>
+            <div class="action-layout">
+              <div class="action-grid">
+                {% for action in catalog.actions %}
+                  <button
+                    class="action-card {% if action.id == 'riding' %}selected{% endif %}"
+                    type="button"
+                    data-action-id="{{ action.id }}"
+                    aria-pressed="{{ 'true' if action.id == 'riding' else 'false' }}"
+                  >
+                    <span class="action-icon" aria-hidden="true">{{ action.icon }}</span>
+                    <strong>{{ action.label }}</strong>
+                  </button>
+                {% endfor %}
+              </div>
+              <label class="idea-field">
+                <span>Vlastný nápad</span>
+                <textarea
+                  id="customIdea"
+                  maxlength="300"
+                  rows="2"
+                  placeholder="napríklad: princezná jazdí na jednorožcovi cez dúhový most"
+                >princezná jazdí na jednorožcovi cez dúhový most</textarea>
+                <small><span id="ideaCount">57</span>/300</small>
+              </label>
+            </div>
+          </fieldset>
+
+          <section class="generation-bar" aria-label="Nastavenia generovania">
+            <div class="setting-group">
+              <span class="setting-label">Papier</span>
+              <div class="segmented-control" id="orientationControl">
+                <button class="selected" type="button" data-orientation="portrait" aria-pressed="true">
+                  <span aria-hidden="true">▯</span> Na výšku
+                </button>
+                <button type="button" data-orientation="landscape" aria-pressed="false">
+                  <span aria-hidden="true">▭</span> Na šírku
+                </button>
+              </div>
+            </div>
+            <div class="setting-group complexity">
+              <span class="setting-label">Zložitosť</span>
+              <div class="fixed-setting"><span aria-hidden="true">☺</span> Pre deti 3–5 rokov</div>
+            </div>
+            <div class="submit-group">
+              <button id="generateButton" class="primary-button" type="submit">
+                <span aria-hidden="true">✦</span>
+                Vytvoriť omaľovánku
+              </button>
+              <small>◷ 1 obrázok <span>•</span> približne minúta</small>
+            </div>
+          </section>
+          <div id="formError" class="form-error" role="alert" hidden></div>
+        </form>
+      </section>
+
+      <section id="resultView" class="view result-view" hidden>
+        <button id="editButton" class="back-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6M9 12h11" />
+          </svg>
+          Upraviť zadanie
+        </button>
+        <div class="result-heading">
+          <h1>Hotovo! Môžeme vyfarbovať.</h1>
+          <p id="resultSummary"></p>
+        </div>
+        <div class="result-layout">
+          <div class="preview-column">
+            <div class="paper-frame portrait" id="paperFrame">
+              <img id="resultImage" alt="Vygenerovaná omaľovánka" />
+            </div>
+            <button id="retryButton" class="retry-button" type="button">
+              <span aria-hidden="true">↻</span>
+              Niečo na obrázku nesedí? <strong>Skúsiť znova</strong>
+            </button>
+          </div>
+          <div class="result-actions">
+            <a id="printButton" class="result-button print" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 13h10v8H7z" />
+              </svg>
+              Vytlačiť A4
+            </a>
+            <a id="pngButton" class="result-button download" download>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12m0 0 5-5m-5 5-5-5M4 17v4h16v-4" />
+              </svg>
+              Stiahnuť PNG
+            </a>
+            <a id="pdfButton" class="result-button outline" download>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 2h8l4 4v16H6zM14 2v5h5" />
+              </svg>
+              Stiahnuť PDF
+            </a>
+            <button id="similarButton" class="result-button outline" type="button">
+              <span aria-hidden="true">✦</span>
+              Vytvoriť podobnú
+            </button>
+            <p class="retention-note">ⓘ Obrázok zostane medzi poslednými 20.</p>
+          </div>
+        </div>
+        <section class="recent-section" id="recentSection" hidden>
+          <div class="recent-heading">
+            <h2>Posledné omaľovánky</h2>
+            <span>Zobraziť všetky posledné</span>
+          </div>
+          <div class="recent-rail" id="recentRail"></div>
+        </section>
+      </section>
     </main>
+
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+      <div class="loading-card" role="status" aria-live="polite">
+        <div class="magic-loader" aria-hidden="true">✦</div>
+        <h2>Kreslíme tvoju omaľovánku…</h2>
+        <p>Postavy už pózujú. Zvyčajne to trvá približne minútu.</p>
+      </div>
+    </div>
+
+    <script id="catalogData" type="application/json">{{ catalog | tojson }}</script>
+    <script type="module" src="/static/app.js"></script>
   </body>
 </html>
-
