@@ -37,7 +37,7 @@ class OpenAIImageProvider:
 
     def generate(self, prompt: str, orientation: Orientation) -> GeneratedImage:
         client = OpenAI(api_key=self._read_api_key())
-        size = "1024x1440" if orientation == "portrait" else "1440x1024"
+        size = "1024x1536" if orientation == "portrait" else "1536x1024"
         result = client.images.generate(
             model="gpt-image-2",
             prompt=prompt,
@@ -54,4 +54,3 @@ class OpenAIImageProvider:
             content=base64.b64decode(result.data[0].b64_json),
             request_id=getattr(result, "_request_id", None),
         )
-

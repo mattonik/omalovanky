@@ -39,9 +39,9 @@ class ColoringProcessor:
 
         with Image.open(source_path) as source:
             grayscale = ImageOps.autocontrast(source.convert("L"))
-            line_art = grayscale.point(lambda value: 255 if value > 210 else 0, mode="1")
             available = (page_size[0] - margin * 2, page_size[1] - margin * 2)
-            line_art.thumbnail(available, Image.Resampling.LANCZOS)
+            fitted = ImageOps.contain(grayscale, available, Image.Resampling.LANCZOS)
+            line_art = fitted.point(lambda value: 255 if value > 210 else 0, mode="1")
             page = Image.new("1", page_size, 1)
             x = (page_size[0] - line_art.width) // 2
             y = (page_size[1] - line_art.height) // 2
@@ -70,4 +70,3 @@ class ColoringProcessor:
         )
         pdf.showPage()
         pdf.save()
-

@@ -64,3 +64,19 @@
   - In-app Browser fallback: pripojenie zlyhalo na chýbajúcej sandbox metadáte; vizuálna kontrola preto použila samostatný Playwright runtime.
 - Commit: `Build responsive coloring generator UI`.
 - Zostáva: browser fidelity iterácia, E2E, CI, GHCR workflow a deployment dokumentácia.
+
+## 2026-06-20 — Míľnik 6: E2E, CI a Raspberry Pi deployment
+
+- Rozsah: plný browser tok cez fake provider, mobilný overflow test, release gate, CI, ARM64 GHCR publikovanie a prevádzkový README.
+- Zmenené subsystémy: Playwright E2E, test fixture, shell release gate, GitHub Actions a dokumentácia.
+- Rozhodnutia: oficiálne OpenAI SDK podporuje pre GPT Image portrét `1024×1536` a landscape `1536×1024`; následný processor oba formáty normalizuje na presné A4.
+- Známe obmedzenia: živý OpenAI request nie je súčasťou automatických testov, aby CI nemíňalo kredit ani nepotrebovalo produkčný secret.
+- Testy:
+  - `./scripts/check.sh` — úspech: 16 unit/integration testov, 2 Playwright E2E testy a Docker build.
+  - E2E overilo builder → generovanie → výsledok → PNG/PDF/tlač akcie → história a mobilný viewport 390×844 bez horizontálneho overflow.
+  - Vizuálna QA na 1449×1086 porovnala schválený builder aj výsledkový koncept s implementáciou.
+  - Opravené počas fidelity iterácie: príliš vysoké desktopové kategórie, chýbajúci favicon, miniatúrna kresba spôsobená `thumbnail()` a roztiahnutá jediná karta histórie.
+  - Above-the-fold copy sa zhoduje so schváleným konceptom; jediná zámerná odchýlka je znak `+` medzi názvami kombinovaných postáv.
+  - `docker-compose.yml` a oba GitHub Actions workflowy prešli YAML parserom. Lokálny Docker CLI nemá Compose plugin, takže `docker compose config` nebolo na tomto stroji dostupné.
+- Commit: `Add E2E CI and Raspberry Pi deployment`.
+- Zostáva: finálne porovnanie screenshotov, push a kontrola pracovného stromu.

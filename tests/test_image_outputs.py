@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 from app.config import Settings
 from app.image_processing import A4_300_DPI, ColoringProcessor
@@ -38,6 +38,12 @@ def test_processor_creates_a4_png_and_pdf_in_both_orientations(tmp_path: Path) -
         with Image.open(result.png_path) as image:
             assert image.size == A4_300_DPI[orientation]
             assert image.mode == "1"
+            ink_bounds = ImageOps.invert(image.convert("L")).getbbox()
+            assert ink_bounds is not None
+            width_ratio = (ink_bounds[2] - ink_bounds[0]) / image.width
+            height_ratio = (ink_bounds[3] - ink_bounds[1]) / image.height
+            assert max(width_ratio, height_ratio) > 0.55
+            assert min(width_ratio, height_ratio) > 0.3
         assert result.pdf_path.read_bytes().startswith(b"%PDF")
 
 
