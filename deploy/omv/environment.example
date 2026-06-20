@@ -1,0 +1,5 @@
+OPENAI_API_KEY=sk-your-openai-api-key
+OMALOVANKY_DATA_DIR=/srv/appdata/omalovanky
+OMALOVANKY_PORT=8081
+TZ=Europe/Bratislava
+

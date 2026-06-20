@@ -67,6 +67,12 @@ OMALOVANKY_DATA_DIR=/srv/appdata/omalovanky
 OMALOVANKY_PORT=8081
 ```
 
+Pre OpenMediaVault Docker Compose plugin je pripravený samostatný príklad:
+
+- [`deploy/omv/compose.yml`](deploy/omv/compose.yml) – YAML určený priamo do poľa **File**
+- [`deploy/omv/environment.example`](deploy/omv/environment.example) – obsah poľa **Environment**
+- [`deploy/omv/README.md`](deploy/omv/README.md) – presný postup Pull, Up, healthcheck a aktualizácia
+
 ## Raspberry Pi a Tailscale
 
 GitHub Actions publikuje ARM64 image do `ghcr.io/mattonik/omalovanky`.

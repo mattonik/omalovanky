@@ -90,3 +90,14 @@
   - `./scripts/check.sh` — úspech: 19 unit/integration testov, 2 Playwright E2E testy a Docker build.
   - `OPENAI_API_KEY=<test> docker-compose config` — úspešná interpolácia env premennej; výsledná konfigurácia neobsahuje Compose `secrets`.
 - Commit: `Read OpenAI key from Compose environment`.
+
+## 2026-06-20 — OpenMediaVault Compose príklad
+
+- Rozsah: hotový OMV Compose YAML, vzor Environment poľa a krokový návod pre Pull, Up, Tailscale prístup, healthcheck, aktualizáciu a zálohu.
+- Zmenené subsystémy: `deploy/omv` a hlavná deployment dokumentácia.
+- Rozhodnutia: OMV konfigurácia používa iba publikovaný ARM64 GHCR image, absolútny perzistentný adresár `/srv/appdata/omalovanky`, `pull_policy: always` a Python healthcheck bez dodatočných balíkov.
+- Testy:
+  - izolovaný `docker-compose --env-file deploy/omv/environment.example -f deploy/omv/compose.yml config` — úspech pre image, port, volume, env, `pull_policy` a healthcheck.
+  - lokálny kontajner spustený v OMV štýle — `/healthz` vrátil pripravenú databázu, úložisko, worker aj prítomný API kľúč.
+  - kontrola sledovaných súborov nenašla reálny OpenAI API kľúč.
+- Commit: `Add OpenMediaVault Compose example`.
