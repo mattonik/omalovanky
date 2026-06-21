@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 
 from .image_provider import ImageProvider
 from .image_processing import ColoringProcessor
 from .schemas import GenerationRequest
 from .storage import Storage
+from .prompting import build_color_preview_prompt, build_image_prompt
 
 
 class GenerationWorker:
@@ -58,10 +60,16 @@ class GenerationWorker:
         generation_id = int(job["id"])
         try:
             request = GenerationRequest.model_validate(job["request"])
-            generated = self.image_provider.generate(job["prompt"], request.orientation)
+            line_art_prompt = job["prompt"] or build_image_prompt(request)
+            color_prompt = build_color_preview_prompt(request)
             self.colorings_dir.mkdir(parents=True, exist_ok=True)
             source_path = self.colorings_dir / f"{generation_id}-source.png"
+            color_path = self.colorings_dir / f"{generation_id}-color.png"
+
+            generated = self.image_provider.generate(line_art_prompt, request.orientation)
             source_path.write_bytes(generated.content)
+            colored = self.image_provider.generate(color_prompt, request.orientation)
+            color_path.write_bytes(colored.content)
             processed = self.processor.process(
                 generation_id=generation_id,
                 source_path=source_path,
@@ -71,6 +79,7 @@ class GenerationWorker:
             self.storage.mark_generation_done(
                 generation_id,
                 source_path=str(source_path),
+                color_path=str(color_path),
                 provider_request_id=generated.request_id,
                 png_path=str(processed.png_path),
                 pdf_path=str(processed.pdf_path),

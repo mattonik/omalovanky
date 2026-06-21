@@ -11,10 +11,29 @@ def build_image_prompt(request: GenerationRequest) -> str:
     else:
         world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
     characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
-    if len(characters) == 1:
-        character_text = characters[0]
+    if characters:
+        if len(characters) == 1:
+            character_text = characters[0]
+        else:
+            character_text = ", ".join(characters[:-1]) + f", and {characters[-1]}"
+        subjects = f"Subjects: {character_text}."
+        subject_guidance = (
+            "Show every requested subject once and keep all subjects fully visible."
+        )
+        recognition_guidance = (
+            "The named characters must be immediately recognizable through their signature"
+            " silhouette, face, costume or vehicle shape, while remaining a clean"
+            " coloring-book drawing."
+        )
     else:
-        character_text = ", ".join(characters[:-1]) + f", and {characters[-1]}"
+        subjects = "Characters: none selected."
+        subject_guidance = (
+            "No specific characters were selected, so create a single clear scene that reads"
+            " immediately as the chosen worlds and action."
+        )
+        recognition_guidance = (
+            "Use the selected worlds as the visual anchor for the scene."
+        )
 
     action = ACTION_BY_ID[request.action].prompt_text
     custom = (
@@ -32,14 +51,13 @@ def build_image_prompt(request: GenerationRequest) -> str:
 Create one printable children's coloring page for ages 3 to 5.
 
 Worlds: {world_text}.
-Subjects: {character_text}.
+{subjects}
 Action: {action}.
 {custom}
 Use a {composition}.
 
-The named characters must be immediately recognizable through their signature silhouette,
-face, costume or vehicle shape, while remaining a clean coloring-book drawing. Show every
-requested subject once and keep all subjects fully visible.
+{subject_guidance}
+{recognition_guidance}
 When multiple worlds are selected, blend their iconic visual cues naturally in one simple scene.
 
 Art requirements:
@@ -49,6 +67,51 @@ Art requirements:
 - minimal background detail and generous empty space
 - safe margins around the entire artwork
 - no color, gray, shading, hatching, gradients, texture, or filled black regions
+- no text, letters, numbers, speech bubbles, logos, watermarks, borders, or page decorations
+- no scary expressions, danger, weapons, or visual clutter
+- one flat printable page, not a mockup, photograph, poster, or book spread
+""".strip()
+
+
+def build_color_preview_prompt(request: GenerationRequest) -> str:
+    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    if len(worlds) == 1:
+        world_text = worlds[0]
+    else:
+        world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
+    characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+    if characters:
+        if len(characters) == 1:
+            character_text = characters[0]
+        else:
+            character_text = ", ".join(characters[:-1]) + f", and {characters[-1]}"
+        subjects = f"Subjects: {character_text}."
+    else:
+        subjects = "Characters: none selected."
+
+    action = ACTION_BY_ID[request.action].prompt_text
+    composition = (
+        "portrait composition with the subjects centered vertically"
+        if request.orientation == "portrait"
+        else "landscape composition with the subjects arranged clearly from left to right"
+    )
+
+    return f"""
+Create a simple full-color children's reference illustration for ages 3 to 5.
+
+Worlds: {world_text}.
+{subjects}
+Action: {action}.
+Use a {composition}.
+
+This is a friendly colored reference for a coloring page, so keep the same simple scene,
+clear silhouettes, and readable composition. Use bright, cheerful colors and large obvious
+shapes. If no specific characters were selected, let the scene clearly communicate the
+chosen theme worlds.
+
+Art requirements:
+- full color on a clean white or softly tinted background
+- simple shapes, bold readable forms, and no visual clutter
 - no text, letters, numbers, speech bubbles, logos, watermarks, borders, or page decorations
 - no scary expressions, danger, weapons, or visual clutter
 - one flat printable page, not a mockup, photograph, poster, or book spread

@@ -25,14 +25,27 @@ def make_png_bytes(size: tuple[int, int] = (320, 420)) -> bytes:
     return output.getvalue()
 
 
+def make_color_png_bytes(size: tuple[int, int] = (320, 420)) -> bytes:
+    image = Image.new("RGB", size, "white")
+    for x in range(40, size[0] - 40):
+        image.putpixel((x, 80), (255, 82, 82))
+        image.putpixel((x, size[1] - 80), (82, 122, 255))
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
+
+
 class FakeImageProvider:
     def __init__(self, content: bytes | None = None) -> None:
         self.content = content or make_png_bytes()
+        self.color_content = make_color_png_bytes()
         self.calls: list[tuple[str, str]] = []
 
     def generate(self, prompt: str, orientation: str) -> GeneratedImage:
         self.calls.append((prompt, orientation))
-        return GeneratedImage(self.content, request_id="req-test-123")
+        payload = self.color_content if "full-color" in prompt else self.content
+        request_id = "req-test-123-color" if payload is self.color_content else "req-test-123"
+        return GeneratedImage(payload, request_id=request_id)
 
 
 def make_settings(tmp_path: Path) -> Settings:
@@ -85,9 +98,12 @@ def test_worker_generates_source_image_and_marks_job_done(tmp_path: Path) -> Non
     assert completed["status"] == "done"
     assert completed["provider_request_id"] == "req-test-123"
     assert Path(completed["source_path"]).read_bytes() == provider.content
+    assert Path(completed["color_path"]).read_bytes() == provider.color_content
     assert Path(completed["png_path"]).is_file()
     assert Path(completed["pdf_path"]).is_file()
+    assert len(provider.calls) == 2
     assert provider.calls[0][1] == "landscape"
+    assert "full-color" in provider.calls[1][0]
 
 
 def test_running_generation_is_requeued_after_restart(tmp_path: Path) -> None:
@@ -125,4 +141,4 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
     assert status_payload["pdf_url"] == f"/colorings/{generation_id}.pdf"
     assert status_payload["color_url"] == f"/colorings/{generation_id}/color.png"
     assert status_payload["pattern_print_url"] == f"/colorings/{generation_id}/print-pattern"
-    assert len(provider.calls) == 1
+    assert len(provider.calls) == 2

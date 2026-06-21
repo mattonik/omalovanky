@@ -2,7 +2,7 @@ const catalog = JSON.parse(document.querySelector("#catalogData").textContent);
 
 const state = {
   worlds: new Set(["princesses", "unicorns"]),
-  characters: new Set(["princess", "unicorn"]),
+  characters: new Set(),
   action: "riding",
   orientation: "portrait",
   current: null,
@@ -57,7 +57,6 @@ document.querySelectorAll("[data-character-id]").forEach((button) => {
   button.addEventListener("click", () => {
     const characterId = button.dataset.characterId;
     if (state.characters.has(characterId)) {
-      if (state.characters.size === 1) return;
       state.characters.delete(characterId);
     } else {
       if (state.characters.size >= 4) {
@@ -68,7 +67,9 @@ document.querySelectorAll("[data-character-id]").forEach((button) => {
       state.characters.add(characterId);
       state.worlds.add(button.dataset.worldId);
     }
-    elements.selectionHint.textContent = "Môžeš vybrať najviac 4 postavy.";
+    elements.selectionHint.textContent = state.characters.size
+      ? "Môžeš vybrať najviac 4 postavy. Nechať ich prázdne je tiež v poriadku."
+      : "Postavy sú voliteľné. Môžeš nechať len tému.";
     elements.selectionHint.style.color = "";
     syncSelections();
   });
@@ -176,8 +177,12 @@ async function showResult(item) {
   const labels = item.request.characters
     .map((id) => catalog.characters.find((character) => character.id === id)?.label)
     .filter(Boolean);
+  const worldLabels = item.request.worlds
+    .map((id) => catalog.worlds.find((world) => world.id === id)?.label)
+    .filter(Boolean);
+  const subjectText = labels.length ? labels.join(" + ") : worldLabels.join(" + ");
   const orientation = item.request.orientation === "portrait" ? "na výšku" : "na šírku";
-  elements.resultSummary.textContent = `${labels.join(" + ")} • ${orientation} • pre deti 3–5 rokov`;
+  elements.resultSummary.textContent = `${subjectText} • ${orientation} • pre deti 3–5 rokov`;
   window.scrollTo({ top: 0, behavior: "smooth" });
   await loadRecent(item.id);
 }

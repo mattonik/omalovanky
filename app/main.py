@@ -114,7 +114,7 @@ def create_app(
     def download_color_png(generation_id: int):
         item = require_completed_generation(storage, generation_id)
         return serve_file(
-            item["source_path"],
+            item["color_path"] or item["source_path"],
             "image/png",
             f"omalovanka-{generation_id}-farebna.png",
         )
@@ -180,7 +180,7 @@ def serialize_generation(item: dict) -> GenerationStatus:
         error=item["error"],
         png_url=f"/colorings/{generation_id}.png" if done and item["png_path"] else None,
         pdf_url=f"/colorings/{generation_id}.pdf" if done and item["pdf_path"] else None,
-        color_url=f"/colorings/{generation_id}/color.png" if done and item["source_path"] else None,
+        color_url=f"/colorings/{generation_id}/color.png" if done and (item["color_path"] or item["source_path"]) else None,
         print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
         pattern_print_url=f"/colorings/{generation_id}/print-pattern"
         if done and item["png_path"] and item["source_path"]

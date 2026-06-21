@@ -45,6 +45,7 @@ class Storage:
                     prompt TEXT NOT NULL,
                     provider_request_id TEXT,
                     source_path TEXT,
+                    color_path TEXT,
                     png_path TEXT,
                     pdf_path TEXT,
                     error TEXT,
@@ -60,6 +61,12 @@ class Storage:
                     ON generations(status, completed_at DESC, id DESC);
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(generations)").fetchall()
+            }
+            if "color_path" not in columns:
+                connection.execute("ALTER TABLE generations ADD COLUMN color_path TEXT")
 
     def create_generation(self, request: GenerationRequest, prompt: str) -> dict[str, Any]:
         now = utc_now()
@@ -121,6 +128,7 @@ class Storage:
         generation_id: int,
         *,
         source_path: str,
+        color_path: str | None,
         provider_request_id: str | None,
         png_path: str | None = None,
         pdf_path: str | None = None,
@@ -130,12 +138,13 @@ class Storage:
             connection.execute(
                 """
                 UPDATE generations
-                SET status = 'done', source_path = ?, provider_request_id = ?,
+                SET status = 'done', source_path = ?, color_path = ?, provider_request_id = ?,
                     png_path = ?, pdf_path = ?, completed_at = ?, updated_at = ?, error = NULL
                 WHERE id = ?
                 """,
                 (
                     source_path,
+                    color_path,
                     provider_request_id,
                     png_path,
                     pdf_path,

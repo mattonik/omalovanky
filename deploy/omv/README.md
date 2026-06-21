@@ -28,7 +28,7 @@ Na Raspberry Pi musí existovať adresár z `OMALOVANKY_DATA_DIR`:
 sudo mkdir -p /srv/appdata/omalovanky
 ```
 
-Obsahuje SQLite databázu a všetky vygenerované omaľovánky. Pri aktualizácii alebo znovuvytvorení kontajnera zostane zachovaný.
+Obsahuje SQLite databázu a všetky vygenerované omaľovánky aj farebné vzory. Pri aktualizácii alebo znovuvytvorení kontajnera zostane zachovaný.
 
 ## 3. Spustenie
 

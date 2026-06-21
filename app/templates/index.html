@@ -30,12 +30,12 @@
           <span class="sparkle sparkle-left" aria-hidden="true">✦</span>
           <h1>Čo dnes vyfarbíme?</h1>
           <span class="sparkle sparkle-right" aria-hidden="true">✦</span>
-          <p>Vyber postavy, akciu a papier. O zvyšok sa postará kúzlo.</p>
+          <p>Vyber tému, akciu a papier. Postavy sú voliteľné.</p>
         </div>
 
         <form id="generationForm">
           <fieldset class="builder-section">
-            <legend><span>1.</span> Vyber svet</legend>
+            <legend><span>1.</span> Vyber tému</legend>
             <div class="world-grid">
               {% for world in catalog.worlds %}
                 <button
@@ -58,7 +58,7 @@
           </fieldset>
 
           <fieldset class="builder-section">
-            <legend><span>2.</span> Kto bude na obrázku?</legend>
+            <legend><span>2.</span> Postavy (voliteľné)</legend>
             <div class="character-rail" id="characterRail">
               {% for character in catalog.characters %}
                 <button
@@ -76,7 +76,7 @@
                 </button>
               {% endfor %}
             </div>
-            <p class="selection-hint" id="selectionHint">Môžeš vybrať najviac 4 postavy.</p>
+            <p class="selection-hint" id="selectionHint">Postavy sú voliteľné. Môžeš nechať len tému.</p>
           </fieldset>
 
           <fieldset class="builder-section action-section">
@@ -102,8 +102,8 @@
                   maxlength="300"
                   rows="2"
                   placeholder="napríklad: princezná jazdí na jednorožcovi cez dúhový most"
-                >princezná jazdí na jednorožcovi cez dúhový most</textarea>
-                <small><span id="ideaCount">57</span>/300</small>
+                ></textarea>
+                <small><span id="ideaCount">0</span>/300</small>
               </label>
             </div>
           </fieldset>

@@ -118,6 +118,7 @@ def test_completed_generations_remain_available_beyond_recent_window(tmp_path: P
         storage.mark_generation_done(
             job["id"],
             source_path=str(paths[0]),
+            color_path=str(paths[0]),
             png_path=str(paths[1]),
             pdf_path=str(paths[2]),
             provider_request_id=None,

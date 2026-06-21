@@ -1,14 +1,15 @@
 # Čarovné omaľovánky
 
-Súkromný rodinný generátor jednoduchých čiernobielych omaľovánok pre deti vo veku 3–5 rokov. Aplikácia kombinuje princezné, jednorožce, záchranárske šteniatka, postavy z Cars aj K-pop Demon Hunters, vytvorí čistý A4 PNG/PDF a uchová všetky výsledky na disku.
+Súkromný rodinný generátor jednoduchých omaľovánok pre deti vo veku 3–5 rokov. Aplikácia kombinuje princezné, jednorožce, záchranárske šteniatka, postavy z Cars aj K-pop Demon Hunters, vytvorí čiernobielu omaľovánku, farebný vzor a uchová všetky výsledky na disku.
 
 ## Funkcie
 
-- 1–4 postavy v jednej scéne
+- 1–4 postavy v jednej scéne, alebo len samotná téma bez postáv
 - orientácia A4 na výšku aj na šírku
 - vlastný opis scény do 300 znakov
 - OpenAI Image API (`gpt-image-2`, stredná kvalita)
 - čistý čiernobiely PNG pri 300 DPI a A4 PDF
+- samostatný farebný PNG ako vzor pre vyfarbovanie
 - tlač priamo z prehliadača
 - všetky vygenerované omaľovánky sú uložené na disku, v zozname sa zobrazuje posledných 20
 - download čiernobielej aj plnofarebnej verzie

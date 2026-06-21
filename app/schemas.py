@@ -11,7 +11,7 @@ Orientation = Literal["portrait", "landscape"]
 
 class GenerationRequest(BaseModel):
     worlds: list[str] = Field(min_length=1, max_length=4)
-    characters: list[str] = Field(min_length=1, max_length=4)
+    characters: list[str] = Field(default_factory=list, max_length=4)
     action: str
     custom_idea: str = Field(default="", max_length=300)
     orientation: Orientation = "portrait"
@@ -50,6 +50,8 @@ class GenerationRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_character_worlds(self) -> "GenerationRequest":
+        if not self.characters:
+            return self
         selected_worlds = set(self.worlds)
         missing_worlds = {
             CHARACTER_BY_ID[character_id].world_id

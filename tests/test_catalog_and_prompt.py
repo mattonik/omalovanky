@@ -90,6 +90,20 @@ def test_kpop_demon_hunters_prompt_mentions_new_world_and_group() -> None:
     assert "HUNTR/X" in prompt
 
 
+def test_theme_only_generation_request_is_allowed() -> None:
+    request = GenerationRequest(
+        worlds=["princesses"],
+        characters=[],
+        action="riding",
+        orientation="portrait",
+    )
+
+    prompt = build_image_prompt(request)
+
+    assert "Characters: none selected." in prompt
+    assert "Princezné" in prompt
+
+
 @pytest.mark.parametrize(
     "payload",
     [
