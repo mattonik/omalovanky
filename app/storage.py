@@ -128,7 +128,7 @@ class Storage:
         generation_id: int,
         *,
         source_path: str,
-        color_path: str | None,
+        color_path: str | None = None,
         provider_request_id: str | None,
         png_path: str | None = None,
         pdf_path: str | None = None,

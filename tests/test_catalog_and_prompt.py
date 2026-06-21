@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.catalog import CHARACTER_BY_ID, catalog_payload
-from app.prompting import build_image_prompt
+from app.prompting import build_color_preview_prompt, build_image_prompt
 from app.schemas import GenerationRequest
 
 
@@ -102,6 +102,22 @@ def test_theme_only_generation_request_is_allowed() -> None:
 
     assert "Characters: none selected." in prompt
     assert "Princezné" in prompt
+
+
+def test_color_preview_prompt_requests_full_color_reference() -> None:
+    request = GenerationRequest(
+        worlds=["cars"],
+        characters=["lightning-mcqueen", "mater"],
+        action="racing",
+        orientation="landscape",
+        generation_mode="color_first",
+    )
+
+    prompt = build_color_preview_prompt(request)
+
+    assert "full-color children's reference illustration" in prompt
+    assert "Lightning McQueen" in prompt
+    assert "Mater, the rusty tow truck" in prompt
 
 
 @pytest.mark.parametrize(

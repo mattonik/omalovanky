@@ -90,6 +90,7 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
         page.get_by_role("button", name="Mater / Burák").click()
         page.get_by_role("button", name="Pretekajú").click()
         page.get_by_role("button", name="Na šírku").click()
+        page.get_by_role("button", name="Farebný základ").click()
         page.get_by_label("Vlastný nápad").fill("Bleskový McQueen a Mater pretekajú spolu")
         page.get_by_role("button", name="Vytvoriť omaľovánku").click()
 
@@ -106,6 +107,9 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
             "/color.png"
         )
         assert page.get_by_role("link", name="Stiahnuť PDF").get_attribute("href").endswith(".pdf")
+        assert page.locator('#renderModeControl [data-generation-mode="color_first"]').get_attribute(
+            "aria-pressed"
+        ) == "true"
         assert "Bleskový McQueen" in page.locator("#resultSummary").inner_text()
         assert "Mater / Burák" in page.locator("#resultSummary").inner_text()
         assert page.locator("#recentRail .recent-item").count() == 1

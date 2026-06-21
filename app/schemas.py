@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, WORLD_BY_ID
 
 Orientation = Literal["portrait", "landscape"]
+GenerationMode = Literal["line_art_direct", "color_first"]
 
 
 class GenerationRequest(BaseModel):
@@ -15,6 +16,7 @@ class GenerationRequest(BaseModel):
     action: str
     custom_idea: str = Field(default="", max_length=300)
     orientation: Orientation = "portrait"
+    generation_mode: GenerationMode = "line_art_direct"
 
     @field_validator("worlds")
     @classmethod

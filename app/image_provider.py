@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from openai import OpenAI
@@ -17,6 +18,8 @@ class GeneratedImage:
 
 class ImageProvider(Protocol):
     def generate(self, prompt: str, orientation: Orientation) -> GeneratedImage: ...
+
+    def edit(self, source_path: Path, prompt: str, orientation: Orientation) -> GeneratedImage: ...
 
 
 class OpenAIImageProvider:
@@ -42,6 +45,28 @@ class OpenAIImageProvider:
             background="opaque",
             moderation="auto",
         )
+        if not result.data or not result.data[0].b64_json:
+            raise RuntimeError("OpenAI nevrátil dáta obrázka.")
+        return GeneratedImage(
+            content=base64.b64decode(result.data[0].b64_json),
+            request_id=getattr(result, "_request_id", None),
+        )
+
+    def edit(self, source_path: Path, prompt: str, orientation: Orientation) -> GeneratedImage:
+        client = OpenAI(api_key=self._read_api_key())
+        size = "1024x1536" if orientation == "portrait" else "1536x1024"
+        with source_path.open("rb") as source_file:
+            result = client.images.edit(
+                model="gpt-image-2",
+                image=source_file,
+                prompt=prompt,
+                n=1,
+                size=size,
+                quality="medium",
+                input_fidelity="high",
+                output_format="png",
+                background="opaque",
+            )
         if not result.data or not result.data[0].b64_json:
             raise RuntimeError("OpenAI nevrátil dáta obrázka.")
         return GeneratedImage(

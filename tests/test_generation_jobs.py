@@ -8,9 +8,10 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.config import Settings
+from app.image_processing import ColoringProcessor
 from app.image_provider import GeneratedImage
 from app.main import create_app
-from app.prompting import build_image_prompt
+from app.prompting import build_color_preview_prompt, build_image_prompt
 from app.schemas import GenerationRequest
 from app.storage import Storage
 from app.worker import GenerationWorker
@@ -39,13 +40,18 @@ class FakeImageProvider:
     def __init__(self, content: bytes | None = None) -> None:
         self.content = content or make_png_bytes()
         self.color_content = make_color_png_bytes()
-        self.calls: list[tuple[str, str]] = []
+        self.generate_calls: list[tuple[str, str]] = []
+        self.edit_calls: list[tuple[str, str]] = []
 
     def generate(self, prompt: str, orientation: str) -> GeneratedImage:
-        self.calls.append((prompt, orientation))
+        self.generate_calls.append((prompt, orientation))
         payload = self.color_content if "full-color" in prompt else self.content
         request_id = "req-test-123-color" if payload is self.color_content else "req-test-123"
         return GeneratedImage(payload, request_id=request_id)
+
+    def edit(self, source_path: Path, prompt: str, orientation: str) -> GeneratedImage:
+        self.edit_calls.append((prompt, orientation))
+        return GeneratedImage(self.content, request_id="req-test-123-edit")
 
 
 def make_settings(tmp_path: Path) -> Settings:
@@ -56,13 +62,14 @@ def make_settings(tmp_path: Path) -> Settings:
     )
 
 
-def valid_payload() -> dict:
+def valid_payload(*, mode: str = "line_art_direct") -> dict:
     return {
         "worlds": ["cars"],
         "characters": ["lightning-mcqueen", "mater"],
         "action": "racing",
         "custom_idea": "pretekajú po širokej ceste",
         "orientation": "landscape",
+        "generation_mode": mode,
     }
 
 
@@ -98,12 +105,12 @@ def test_worker_generates_source_image_and_marks_job_done(tmp_path: Path) -> Non
     assert completed["status"] == "done"
     assert completed["provider_request_id"] == "req-test-123"
     assert Path(completed["source_path"]).read_bytes() == provider.content
-    assert Path(completed["color_path"]).read_bytes() == provider.color_content
+    assert completed["color_path"] is None
     assert Path(completed["png_path"]).is_file()
     assert Path(completed["pdf_path"]).is_file()
-    assert len(provider.calls) == 2
-    assert provider.calls[0][1] == "landscape"
-    assert "full-color" in provider.calls[1][0]
+    assert len(provider.generate_calls) == 1
+    assert len(provider.edit_calls) == 0
+    assert provider.generate_calls[0][1] == "landscape"
 
 
 def test_running_generation_is_requeued_after_restart(tmp_path: Path) -> None:
@@ -126,7 +133,7 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
     with TestClient(
         create_app(make_settings(tmp_path), image_provider=provider, start_worker=True)
     ) as client:
-        response = client.post("/api/generations", json=valid_payload())
+        response = client.post("/api/generations", json=valid_payload(mode="color_first"))
         generation_id = response.json()["id"]
         deadline = time.monotonic() + 3
         status_payload = {}
@@ -141,4 +148,51 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
     assert status_payload["pdf_url"] == f"/colorings/{generation_id}.pdf"
     assert status_payload["color_url"] == f"/colorings/{generation_id}/color.png"
     assert status_payload["pattern_print_url"] == f"/colorings/{generation_id}/print-pattern"
-    assert len(provider.calls) == 2
+    assert len(provider.generate_calls) == 1
+    assert len(provider.edit_calls) == 0
+
+
+def test_color_first_falls_back_to_openai_edit_when_local_processing_fails(tmp_path: Path) -> None:
+    class FailingOnceProcessor:
+        def __init__(self) -> None:
+            self.calls = 0
+            self.real = ColoringProcessor()
+
+        def process(
+            self,
+            *,
+            generation_id: int,
+            source_path: Path,
+            output_dir: Path,
+            orientation: str,
+        ):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("local conversion failed")
+            return self.real.process(
+                generation_id=generation_id,
+                source_path=source_path,
+                output_dir=output_dir,
+                orientation=orientation,
+            )
+
+    settings = make_settings(tmp_path)
+    provider = FakeImageProvider()
+    storage = Storage(settings.db_path)
+    storage.init_db()
+    request = GenerationRequest.model_validate(valid_payload(mode="color_first"))
+    job = storage.create_generation(request, build_color_preview_prompt(request))
+    worker = GenerationWorker(
+        storage=storage,
+        image_provider=provider,
+        colorings_dir=settings.colorings_dir,
+        processor=FailingOnceProcessor(),
+    )
+
+    assert worker.process_one() is True
+
+    completed = storage.get_generation(job["id"])
+    assert completed["status"] == "done"
+    assert Path(completed["color_path"]).read_bytes() == provider.color_content
+    assert len(provider.generate_calls) == 1
+    assert len(provider.edit_calls) == 1

@@ -51,10 +51,19 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
     class Provider:
         def generate(self, prompt: str, orientation: str) -> GeneratedImage:
             buffer = io.BytesIO()
-            image = Image.new("RGB", (320, 420), "white")
-            ImageDraw.Draw(image).rectangle((50, 50, 270, 370), outline="black", width=10)
+            if "full-color" in prompt:
+                image = Image.new("RGB", (320, 420), "white")
+                draw = ImageDraw.Draw(image)
+                draw.rectangle((40, 40, 280, 380), outline=(220, 58, 58), width=10)
+                draw.ellipse((90, 100, 230, 240), fill=(84, 132, 255))
+            else:
+                image = Image.new("RGB", (320, 420), "white")
+                ImageDraw.Draw(image).rectangle((50, 50, 270, 370), outline="black", width=10)
             image.save(buffer, format="PNG")
             return GeneratedImage(buffer.getvalue(), "req-output")
+
+        def edit(self, source_path: Path, prompt: str, orientation: str) -> GeneratedImage:
+            return self.generate(prompt, orientation)
 
     settings = Settings(
         db_path=tmp_path / "app.db",
@@ -69,6 +78,7 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
                 "characters": ["unicorn"],
                 "action": "riding",
                 "orientation": "portrait",
+                "generation_mode": "color_first",
             },
         )
         generation_id = response.json()["id"]
@@ -118,7 +128,6 @@ def test_completed_generations_remain_available_beyond_recent_window(tmp_path: P
         storage.mark_generation_done(
             job["id"],
             source_path=str(paths[0]),
-            color_path=str(paths[0]),
             png_path=str(paths[1]),
             pdf_path=str(paths[2]),
             provider_request_id=None,

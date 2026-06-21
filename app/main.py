@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from .catalog import catalog_payload
 from .config import Settings, settings
 from .image_provider import ImageProvider, OpenAIImageProvider
-from .prompting import build_image_prompt
+from .prompting import build_color_preview_prompt, build_image_prompt
 from .schemas import GenerationRequest, GenerationStatus
 from .storage import ActiveGenerationError, GenerationNotFoundError, Storage
 from .worker import GenerationWorker
@@ -84,8 +84,13 @@ def create_app(
         status_code=status.HTTP_202_ACCEPTED,
     )
     def create_generation(payload: GenerationRequest):
+        prompt = (
+            build_color_preview_prompt(payload)
+            if payload.generation_mode == "color_first"
+            else build_image_prompt(payload)
+        )
         try:
-            item = storage.create_generation(payload, build_image_prompt(payload))
+            item = storage.create_generation(payload, prompt)
         except ActiveGenerationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -113,8 +118,10 @@ def create_app(
     @app.get("/colorings/{generation_id}/color.png")
     def download_color_png(generation_id: int):
         item = require_completed_generation(storage, generation_id)
+        if not item["color_path"]:
+            raise HTTPException(status_code=404, detail="Farebná verzia nie je k dispozícii.")
         return serve_file(
-            item["color_path"] or item["source_path"],
+            item["color_path"],
             "image/png",
             f"omalovanka-{generation_id}-farebna.png",
         )
@@ -142,6 +149,8 @@ def create_app(
     @app.get("/colorings/{generation_id}/print-pattern")
     def print_coloring_pattern(request: Request, generation_id: int):
         item = require_completed_generation(storage, generation_id)
+        if not item["color_path"]:
+            raise HTTPException(status_code=404, detail="Farebný vzor nie je k dispozícii.")
         return templates.TemplateResponse(
             request=request,
             name="print.html",
@@ -180,10 +189,10 @@ def serialize_generation(item: dict) -> GenerationStatus:
         error=item["error"],
         png_url=f"/colorings/{generation_id}.png" if done and item["png_path"] else None,
         pdf_url=f"/colorings/{generation_id}.pdf" if done and item["pdf_path"] else None,
-        color_url=f"/colorings/{generation_id}/color.png" if done and (item["color_path"] or item["source_path"]) else None,
+        color_url=f"/colorings/{generation_id}/color.png" if done and item["color_path"] else None,
         print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
         pattern_print_url=f"/colorings/{generation_id}/print-pattern"
-        if done and item["png_path"] and item["source_path"]
+        if done and item["png_path"] and item["color_path"]
         else None,
     )
 

@@ -5,6 +5,7 @@ const state = {
   characters: new Set(),
   action: "riding",
   orientation: "portrait",
+  generationMode: "line_art_direct",
   current: null,
   pollTimer: null,
 };
@@ -28,6 +29,7 @@ const elements = {
   pngButton: document.querySelector("#pngButton"),
   colorButton: document.querySelector("#colorButton"),
   pdfButton: document.querySelector("#pdfButton"),
+  renderModeControl: document.querySelector("#renderModeControl"),
   recentSection: document.querySelector("#recentSection"),
   recentRail: document.querySelector("#recentRail"),
 };
@@ -93,6 +95,15 @@ document.querySelectorAll("[data-orientation]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-generation-mode]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.generationMode = button.dataset.generationMode;
+    document.querySelectorAll("[data-generation-mode]").forEach((candidate) => {
+      setSelected(candidate, candidate === button);
+    });
+  });
+});
+
 elements.idea.addEventListener("input", () => {
   elements.ideaCount.textContent = String(elements.idea.value.length);
 });
@@ -113,6 +124,9 @@ const syncSelections = () => {
   document.querySelectorAll(".character-card").forEach((button) => {
     setSelected(button, state.characters.has(button.dataset.characterId));
   });
+  document.querySelectorAll("[data-generation-mode]").forEach((button) => {
+    setSelected(button, button.dataset.generationMode === state.generationMode);
+  });
 };
 
 const requestPayload = () => ({
@@ -121,6 +135,7 @@ const requestPayload = () => ({
   action: state.action,
   custom_idea: elements.idea.value.trim(),
   orientation: state.orientation,
+  generation_mode: state.generationMode,
 });
 
 async function createGeneration() {
@@ -173,6 +188,8 @@ async function showResult(item) {
   elements.pngButton.href = item.png_url;
   elements.colorButton.href = item.color_url;
   elements.pdfButton.href = item.pdf_url;
+  elements.colorButton.hidden = !item.color_url;
+  elements.patternPrintButton.hidden = !item.pattern_print_url;
 
   const labels = item.request.characters
     .map((id) => catalog.characters.find((character) => character.id === id)?.label)

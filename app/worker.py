@@ -5,9 +5,9 @@ from pathlib import Path
 
 from .image_provider import ImageProvider
 from .image_processing import ColoringProcessor
+from .prompting import build_color_preview_prompt, build_image_prompt, build_line_art_edit_prompt
 from .schemas import GenerationRequest
 from .storage import Storage
-from .prompting import build_color_preview_prompt, build_image_prompt
 
 
 class GenerationWorker:
@@ -60,27 +60,50 @@ class GenerationWorker:
         generation_id = int(job["id"])
         try:
             request = GenerationRequest.model_validate(job["request"])
-            line_art_prompt = job["prompt"] or build_image_prompt(request)
-            color_prompt = build_color_preview_prompt(request)
+            source_prompt = job["prompt"] or (
+                build_color_preview_prompt(request)
+                if request.generation_mode == "color_first"
+                else build_image_prompt(request)
+            )
             self.colorings_dir.mkdir(parents=True, exist_ok=True)
             source_path = self.colorings_dir / f"{generation_id}-source.png"
             color_path = self.colorings_dir / f"{generation_id}-color.png"
 
-            generated = self.image_provider.generate(line_art_prompt, request.orientation)
+            generated = self.image_provider.generate(source_prompt, request.orientation)
             source_path.write_bytes(generated.content)
-            colored = self.image_provider.generate(color_prompt, request.orientation)
-            color_path.write_bytes(colored.content)
-            processed = self.processor.process(
-                generation_id=generation_id,
-                source_path=source_path,
-                output_dir=self.colorings_dir,
-                orientation=request.orientation,
-            )
+            provider_request_id = generated.request_id
+            if request.generation_mode == "color_first":
+                color_path.write_bytes(generated.content)
+            else:
+                color_path = None
+
+            try:
+                processed = self.processor.process(
+                    generation_id=generation_id,
+                    source_path=source_path,
+                    output_dir=self.colorings_dir,
+                    orientation=request.orientation,
+                )
+            except Exception:
+                edited_source_path = self.colorings_dir / f"{generation_id}-fallback-lineart.png"
+                edited = self.image_provider.edit(
+                    source_path=source_path,
+                    prompt=build_line_art_edit_prompt(request),
+                    orientation=request.orientation,
+                )
+                edited_source_path.write_bytes(edited.content)
+                provider_request_id = edited.request_id or provider_request_id
+                processed = self.processor.process(
+                    generation_id=generation_id,
+                    source_path=edited_source_path,
+                    output_dir=self.colorings_dir,
+                    orientation=request.orientation,
+                )
             self.storage.mark_generation_done(
                 generation_id,
                 source_path=str(source_path),
-                color_path=str(color_path),
-                provider_request_id=generated.request_id,
+                color_path=str(color_path) if color_path is not None else None,
+                provider_request_id=provider_request_id,
                 png_path=str(processed.png_path),
                 pdf_path=str(processed.pdf_path),
             )
