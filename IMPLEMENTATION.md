@@ -114,3 +114,16 @@
   - E2E overilo výsledkovú obrazovku s tlačidlami `Vytlačiť bez vzoru`, `Vytlačiť so vzorom`, `Stiahnuť PNG`, `Stiahnuť farebnú verziu` a `Stiahnuť PDF`.
 - Commit: `0ee052e` (`Add color downloads and patterned print`).
 - Zostáva: žiadna funkčná práca nespôsobujúca blokáciu; pri ďalšej iterácii sa dá zvážiť ďalší vizuálny tuning alebo rozšírenie katalógu.
+
+## 2026-06-21 — Zmena: farebný preview a theme-only režim
+
+- Rozsah: farebný náhľad je teraz skutočne generovaný samostatne, generátor povoľuje prázdny výber postáv a UI podporuje tvorbu len z témy bez ručného klikania na postavy.
+- Zmenené subsystémy: `GenerationRequest` validácia, prompt builder, worker, SQLite storage so stĺpcom `color_path`, výsledkové API, builder UI a testy.
+- Rozhodnutia: line-art a farebný preview sú dve oddelené AI generácie; line-art ostáva základ omaľovánky, farebný výstup je referenčná verzia pre download a patterned print.
+- Známe obmedzenia: farebný preview môže byť stále štýlovo jednoduchý, aby ostal vhodný ako detský vzor; pri konkrétnych licencovaných postavách stále záleží na kvalite modelu.
+- Testy:
+  - `.venv/bin/python -m py_compile app/*.py tests/*.py` — úspech.
+  - `./scripts/check.sh` — úspech: 21 unit/integration testov, 2 Playwright E2E testy a Docker build.
+  - E2E overilo, že UI funguje aj po odstránení predvyplneného textu, s novými tlačidlami pre farebnú verziu a patterned print.
+- Commit: `fdc7379` (`Allow theme-only generation and color previews`).
+- Zostáva: ak bude treba, môžeme ešte jemne doladiť texty alebo poradie prvkov, ale funkčne je požiadavka uzavretá.
