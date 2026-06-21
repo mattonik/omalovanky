@@ -101,3 +101,16 @@
   - lokálny kontajner spustený v OMV štýle — `/healthz` vrátil pripravenú databázu, úložisko, worker aj prítomný API kľúč.
   - kontrola sledovaných súborov nenašla reálny OpenAI API kľúč.
 - Commit: `Add OpenMediaVault Compose example`.
+
+## 2026-06-21 — Zmena: všetky výstupy, farebný download a patterned print
+
+- Rozsah: odstránenie mazania starších výsledkov, doplnenie K-pop Demon Hunters katalógu, farebného downloadu, tlače bez vzoru a tlače so vzorom, plus zmenšenie mobilného selectoru svetov.
+- Zmenené subsystémy: katalóg, prompt builder, API schémy, výsledkové endpointy, print šablóna, UI tlačidlá, mobilné CSS, OMV/readme dokumentácia a testy.
+- Rozhodnutia: `source_path` ostáva uložený ako plnofarebný vstup a sprístupňuje sa cez `/colorings/{id}/color.png`; staršie záznamy sa už nemažú, len sa v zozname naďalej ukazuje posledných 20.
+- Známe obmedzenia: print UX je stále browser-based HTML, ale už používa pevný A4 layout s oddelenou farebnou referenciou v rohu; PDF download zostáva ako najspoľahlivejší výstup.
+- Testy:
+  - `.venv/bin/python -m py_compile app/*.py tests/*.py` — úspech.
+  - `./scripts/check.sh` — úspech: 20 unit/integration testov, 2 Playwright E2E testy a Docker build.
+  - E2E overilo výsledkovú obrazovku s tlačidlami `Vytlačiť bez vzoru`, `Vytlačiť so vzorom`, `Stiahnuť PNG`, `Stiahnuť farebnú verziu` a `Stiahnuť PDF`.
+- Commit: `0ee052e` (`Add color downloads and patterned print`).
+- Zostáva: žiadna funkčná práca nespôsobujúca blokáciu; pri ďalšej iterácii sa dá zvážiť ďalší vizuálny tuning alebo rozšírenie katalógu.
