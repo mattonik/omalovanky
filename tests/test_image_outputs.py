@@ -81,17 +81,21 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
             time.sleep(0.02)
         assert item["status"] == "done"
         png = client.get(item["png_url"])
+        color = client.get(item["color_url"])
         pdf = client.get(item["pdf_url"])
         print_page = client.get(item["print_url"])
+        pattern_print = client.get(item["pattern_print_url"])
         recent = client.get("/api/colorings")
 
     assert png.status_code == 200 and png.headers["content-type"].startswith("image/png")
+    assert color.status_code == 200 and color.headers["content-type"].startswith("image/png")
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
     assert print_page.status_code == 200 and "window.print()" in print_page.text
+    assert pattern_print.status_code == 200 and "Farebný vzor" in pattern_print.text
     assert recent.json()[0]["id"] == generation_id
 
 
-def test_prune_keeps_only_twenty_completed_generations(tmp_path: Path) -> None:
+def test_completed_generations_remain_available_beyond_recent_window(tmp_path: Path) -> None:
     storage = Storage(tmp_path / "app.db")
     storage.init_db()
     request = GenerationRequest(
@@ -100,7 +104,6 @@ def test_prune_keeps_only_twenty_completed_generations(tmp_path: Path) -> None:
         action="racing",
         orientation="landscape",
     )
-    created_paths: list[Path] = []
     first_id = 0
     for index in range(21):
         job = storage.create_generation(request, build_image_prompt(request))
@@ -112,7 +115,6 @@ def test_prune_keeps_only_twenty_completed_generations(tmp_path: Path) -> None:
             path = tmp_path / f"{job['id']}-{suffix}"
             path.write_bytes(b"x")
             paths.append(path)
-            created_paths.append(path)
         storage.mark_generation_done(
             job["id"],
             source_path=str(paths[0]),
@@ -122,15 +124,7 @@ def test_prune_keeps_only_twenty_completed_generations(tmp_path: Path) -> None:
         )
 
     stale_paths = storage.prune_completed(keep=20)
-    for raw_path in stale_paths:
-        Path(raw_path).unlink(missing_ok=True)
-
+    assert stale_paths == []
     assert len(storage.list_completed(limit=20)) == 20
-    assert all(str(path) not in stale_paths for path in created_paths[3:])
-    assert all(not Path(path).exists() for path in stale_paths)
-    try:
-        storage.get_generation(first_id)
-    except Exception as exc:
-        assert "neexistuje" in str(exc)
-    else:
-        raise AssertionError("Najstarší záznam mal byť odstránený.")
+    assert storage.get_generation(first_id)["status"] == "done"
+    assert len(list(tmp_path.glob("*-source.png"))) == 21

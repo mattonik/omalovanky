@@ -333,6 +333,10 @@ fieldset {
   background: #fff2e8;
 }
 
+.character-avatar.world-kpop-demon-hunters {
+  background: linear-gradient(145deg, #fff0f8, #f3f0ff);
+}
+
 .character-card strong {
   width: 100%;
   min-height: 43px;
@@ -728,6 +732,13 @@ fieldset {
   background: var(--violet);
 }
 
+.result-button.print-pattern {
+  color: #fff;
+  border-color: #5b8cff;
+  background: linear-gradient(145deg, #5b8cff, #7c5cff);
+  box-shadow: 0 10px 22px rgba(91, 140, 255, 0.2);
+}
+
 .retention-note {
   margin: 2px 0 0;
   text-align: center;
@@ -853,8 +864,13 @@ fieldset {
     gap: 12px;
   }
 
+  .world-card img {
+    height: clamp(124px, 26vw, 158px);
+  }
+
   .world-card strong {
-    font-size: 17px;
+    min-height: 40px;
+    font-size: 15px;
   }
 
   .character-rail {
@@ -927,7 +943,12 @@ fieldset {
   }
 
   .world-card img {
-    height: clamp(280px, 104vw, 430px);
+    height: clamp(138px, 34vw, 170px);
+  }
+
+  .world-card strong {
+    min-height: 42px;
+    padding: 8px 10px 9px;
   }
 
   .result-actions {

@@ -9,6 +9,7 @@ class World:
     label: str
     icon: str
     color: str
+    asset: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,10 +30,17 @@ class Action:
 
 
 WORLDS = (
-    World("princesses", "Princezné", "👸", "violet"),
-    World("unicorns", "Jednorožce", "🦄", "pink"),
-    World("rescue-pups", "Labková patrola", "🐾", "blue"),
-    World("cars", "Autá", "🏎️", "coral"),
+    World("princesses", "Princezné", "👸", "violet", "/static/assets/world-princesses.png"),
+    World("unicorns", "Jednorožce", "🦄", "pink", "/static/assets/world-unicorns.png"),
+    World("rescue-pups", "Labková patrola", "🐾", "blue", "/static/assets/world-rescue-pups.png"),
+    World("cars", "Autá", "🏎️", "coral", "/static/assets/world-cars.png"),
+    World(
+        "kpop-demon-hunters",
+        "K-pop Demon Hunters",
+        "🎤",
+        "magenta",
+        "/static/assets/world-kpop-demon-hunters.svg",
+    ),
 )
 
 CHARACTERS = (
@@ -81,6 +89,16 @@ CHARACTERS = (
         "🌩️",
     ),
     Character("mack", "Mack", "Mack the transporter truck from Disney Pixar Cars", "cars", "🚛"),
+    Character("rumi", "Rumi", "Rumi, the lead singer and demon hunter from KPop Demon Hunters", "kpop-demon-hunters", "🎤"),
+    Character("mira", "Mira", "Mira, the confident performer from KPop Demon Hunters", "kpop-demon-hunters", "✨"),
+    Character("zoey", "Zoey", "Zoey, the bright and playful performer from KPop Demon Hunters", "kpop-demon-hunters", "🌙"),
+    Character(
+        "huntrix",
+        "HUNTR/X",
+        "the HUNTR/X trio Rumi, Mira, and Zoey together from KPop Demon Hunters",
+        "kpop-demon-hunters",
+        "🎶",
+    ),
 )
 
 ACTIONS = (
@@ -100,4 +118,3 @@ def catalog_payload() -> dict[str, list[dict[str, str]]]:
         "characters": [asdict(item) for item in CHARACTERS],
         "actions": [asdict(item) for item in ACTIONS],
     }
-

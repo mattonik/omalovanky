@@ -99,8 +99,12 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
             "(image) => image.complete && image.naturalWidth > 0"
         )
 
-        assert page.get_by_role("link", name="Vytlačiť A4").is_visible()
+        assert page.get_by_role("link", name="Vytlačiť bez vzoru").is_visible()
+        assert page.get_by_role("link", name="Vytlačiť so vzorom").is_visible()
         assert page.get_by_role("link", name="Stiahnuť PNG").get_attribute("href").endswith(".png")
+        assert page.get_by_role("link", name="Stiahnuť farebnú verziu").get_attribute("href").endswith(
+            "/color.png"
+        )
         assert page.get_by_role("link", name="Stiahnuť PDF").get_attribute("href").endswith(".pdf")
         assert "Bleskový McQueen" in page.locator("#resultSummary").inner_text()
         assert "Mater / Burák" in page.locator("#resultSummary").inner_text()

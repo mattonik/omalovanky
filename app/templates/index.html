@@ -46,7 +46,7 @@
                 >
                   <span class="selection-check" aria-hidden="true">✓</span>
                   <img
-                    src="/static/assets/world-{{ world.id }}.png"
+                    src="{{ world.asset }}"
                     alt=""
                     width="627"
                     height="627"
@@ -162,13 +162,25 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 13h10v8H7z" />
               </svg>
-              Vytlačiť A4
+              Vytlačiť bez vzoru
+            </a>
+            <a id="patternPrintButton" class="result-button print-pattern" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 4h12v4H6zM7 10h10v10H7zM10 13l1.5 1.5L15 11" />
+              </svg>
+              Vytlačiť so vzorom
             </a>
             <a id="pngButton" class="result-button download" download>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 3v12m0 0 5-5m-5 5-5-5M4 17v4h16v-4" />
               </svg>
               Stiahnuť PNG
+            </a>
+            <a id="colorButton" class="result-button outline" download>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12a8 8 0 1 0 8-8 8 8 0 0 0-8 8Zm8-8v16" />
+              </svg>
+              Stiahnuť farebnú verziu
             </a>
             <a id="pdfButton" class="result-button outline" download>
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -180,7 +192,7 @@
               <span aria-hidden="true">✦</span>
               Vytvoriť podobnú
             </button>
-            <p class="retention-note">ⓘ Obrázok zostane medzi poslednými 20.</p>
+            <p class="retention-note">ⓘ Zostávajú uložené všetky výsledky, v zozname sa ukazuje posledných 20.</p>
           </div>
         </div>
         <section class="recent-section" id="recentSection" hidden>

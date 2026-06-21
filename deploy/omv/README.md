@@ -28,7 +28,7 @@ Na Raspberry Pi musí existovať adresár z `OMALOVANKY_DATA_DIR`:
 sudo mkdir -p /srv/appdata/omalovanky
 ```
 
-Obsahuje SQLite databázu a posledných 20 vygenerovaných omaľovánok. Pri aktualizácii alebo znovuvytvorení kontajnera zostane zachovaný.
+Obsahuje SQLite databázu a všetky vygenerované omaľovánky. Pri aktualizácii alebo znovuvytvorení kontajnera zostane zachovaný.
 
 ## 3. Spustenie
 
@@ -88,4 +88,3 @@ Zálohujte celý adresár:
 ```
 
 API kľúč patrí do OMV Environment/secret env konfigurácie, nie do zálohy dát aplikácie.
-

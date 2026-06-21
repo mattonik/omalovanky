@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 627 627" role="img" aria-labelledby="title desc">
+  <title id="title">K-pop Demon Hunters</title>
+  <desc id="desc">Stylized stage with microphones, stars, and a neon arc for the K-pop Demon Hunters world.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff0f8" />
+      <stop offset="0.55" stop-color="#f3f0ff" />
+      <stop offset="1" stop-color="#e7f3ff" />
+    </linearGradient>
+    <linearGradient id="stage" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2d164d" />
+      <stop offset="1" stop-color="#53267f" />
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff76cb" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#6b7dff" stop-opacity="0.15" />
+    </linearGradient>
+  </defs>
+  <rect width="627" height="627" rx="88" fill="url(#bg)" />
+  <circle cx="119" cy="144" r="24" fill="#ffbd3e" opacity=".95" />
+  <circle cx="507" cy="126" r="18" fill="#ff76cb" opacity=".9" />
+  <path d="M100 404c34-120 118-181 220-181s186 61 220 181" fill="none" stroke="url(#beam)" stroke-width="44" stroke-linecap="round" opacity=".7" />
+  <path d="M121 462c36-96 107-148 192-148s156 52 192 148" fill="url(#stage)" />
+  <path d="M169 462c24-54 73-86 144-86s120 32 144 86" fill="none" stroke="#ff8cdd" stroke-width="16" stroke-linecap="round" />
+  <g fill="#fff6b8">
+    <path d="M258 156l12 24 26 4-19 18 5 26-24-13-23 13 5-26-19-18 26-4z" />
+    <path d="M390 180l10 20 22 3-16 15 4 22-20-11-20 11 4-22-16-15 22-3z" />
+    <path d="M470 250l9 18 20 3-15 14 4 20-18-10-18 10 4-20-15-14 20-3z" />
+  </g>
+  <g fill="#fff" stroke="#1b1331" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M261 255v-46c0-19 16-35 35-35s35 16 35 35v46" />
+    <rect x="255" y="250" width="47" height="88" rx="20" />
+    <path d="M290 338l-22 40" />
+    <path d="M290 338l24 40" />
+    <path d="M366 276v-38c0-15 12-27 27-27s27 12 27 27v38" />
+    <rect x="361" y="272" width="38" height="70" rx="16" />
+    <path d="M380 342v43" />
+    <path d="M312 274c14 0 25 11 25 25" fill="none" />
+  </g>
+  <g fill="none" stroke="#1b1331" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M236 287l-29 16" />
+    <path d="M421 286l30 15" />
+  </g>
+  <path d="M0 514c52-10 102-12 156-12 97 0 148 22 158 22s59-22 158-22c56 0 106 2 155 12v113H0z" fill="#1e1438" />
+</svg>

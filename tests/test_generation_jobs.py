@@ -123,4 +123,6 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
     assert status_payload["status"] == "done"
     assert status_payload["png_url"] == f"/colorings/{generation_id}.png"
     assert status_payload["pdf_url"] == f"/colorings/{generation_id}.pdf"
+    assert status_payload["color_url"] == f"/colorings/{generation_id}/color.png"
+    assert status_payload["pattern_print_url"] == f"/colorings/{generation_id}/print-pattern"
     assert len(provider.calls) == 1

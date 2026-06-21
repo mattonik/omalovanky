@@ -10,11 +10,19 @@
         margin: 0;
       }
 
+      :root {
+        --page-width: {% if orientation == "landscape" %}297mm{% else %}210mm{% endif %};
+        --page-height: {% if orientation == "landscape" %}210mm{% else %}297mm{% endif %};
+      }
+
       html,
       body {
         margin: 0;
+        width: 100%;
         min-height: 100%;
         background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
 
       body {
@@ -22,26 +30,102 @@
         place-items: center;
       }
 
-      img {
+      .page {
+        position: relative;
+        width: var(--page-width);
+        height: var(--page-height);
+        overflow: hidden;
+        background: #fff;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .page--plain {
+        display: grid;
+        place-items: center;
+      }
+
+      .main-art {
+        position: absolute;
+        inset: 10mm;
+      }
+
+      .main-art img,
+      .reference img {
         display: block;
         width: 100%;
-        height: 100vh;
+        height: 100%;
         object-fit: contain;
       }
 
+      .reference {
+        position: absolute;
+        right: 10mm;
+        bottom: 10mm;
+        width: {% if orientation == "landscape" %}54mm{% else %}46mm{% endif %};
+        height: {% if orientation == "landscape" %}54mm{% else %}46mm{% endif %};
+        padding: 2.5mm;
+        background: #fff;
+        border: 1px solid #d6dbe7;
+        border-radius: 6mm;
+        box-shadow: 0 2mm 7mm rgba(56, 72, 112, 0.12);
+      }
+
+      .reference-label {
+        position: absolute;
+        top: -5.5mm;
+        left: 4mm;
+        padding: 0 2.5mm;
+        color: #51607d;
+        background: #fff;
+        font: 700 8pt/1 sans-serif;
+      }
+
       @media print {
-        img {
-          width: 100vw;
-          height: 100vh;
+        .page {
+          box-shadow: none;
         }
       }
     </style>
   </head>
   <body>
-    <img src="/colorings/{{ generation_id }}.png" alt="Omaľovánka pripravená na tlač" />
+    {% if mode == "pattern" %}
+      <section class="page page--pattern" aria-label="Omaľovánka so vzorom">
+        <div class="main-art">
+          <img src="{{ lineart_url }}" alt="Čiernobiela omaľovánka" />
+        </div>
+        <div class="reference" aria-label="Farebný vzor">
+          <span class="reference-label">Vzor</span>
+          <img src="{{ color_url }}" alt="Farebný vzor" />
+        </div>
+      </section>
+    {% else %}
+      <section class="page page--plain" aria-label="Omaľovánka pripravená na tlač">
+        <div class="main-art">
+          <img src="{{ lineart_url }}" alt="Omaľovánka pripravená na tlač" />
+        </div>
+      </section>
+    {% endif %}
     <script>
-      window.addEventListener("load", () => window.print());
+      const waitForImages = async () => {
+        const images = Array.from(document.images);
+        await Promise.all(
+          images.map(
+            (image) =>
+              image.complete
+                ? Promise.resolve()
+                : new Promise((resolve) => {
+                    image.addEventListener("load", resolve, { once: true });
+                    image.addEventListener("error", resolve, { once: true });
+                  }),
+          ),
+        );
+      };
+
+      window.addEventListener("load", async () => {
+        await waitForImages();
+        window.setTimeout(() => window.print(), 120);
+      });
     </script>
   </body>
 </html>
-

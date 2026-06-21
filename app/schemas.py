@@ -69,5 +69,6 @@ class GenerationStatus(BaseModel):
     error: str | None = None
     png_url: str | None = None
     pdf_url: str | None = None
+    color_url: str | None = None
     print_url: str | None = None
-
+    pattern_print_url: str | None = None

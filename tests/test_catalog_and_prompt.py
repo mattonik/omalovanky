@@ -17,7 +17,9 @@ def test_catalog_contains_requested_cars_characters() -> None:
         "jackson-storm",
         "mack",
     }.issubset(CHARACTER_BY_ID)
-    assert len(catalog_payload()["characters"]) == 15
+    assert CHARACTER_BY_ID["rumi"].label == "Rumi"
+    assert CHARACTER_BY_ID["huntrix"].label == "HUNTR/X"
+    assert len(catalog_payload()["characters"]) == 19
 
 
 def test_princess_on_unicorn_prompt_is_simple_and_printable() -> None:
@@ -71,6 +73,23 @@ def test_mcqueen_and_mater_prompt_uses_recognizable_names() -> None:
     assert "signature silhouette" in prompt
 
 
+def test_kpop_demon_hunters_prompt_mentions_new_world_and_group() -> None:
+    request = GenerationRequest(
+        worlds=["kpop-demon-hunters"],
+        characters=["rumi", "mira", "zoey", "huntrix"],
+        action="rescuing",
+        orientation="portrait",
+    )
+
+    prompt = build_image_prompt(request)
+
+    assert "K-pop Demon Hunters" in prompt
+    assert "Rumi" in prompt
+    assert "Mira" in prompt
+    assert "Zoey" in prompt
+    assert "HUNTR/X" in prompt
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -101,4 +120,3 @@ def test_mcqueen_and_mater_prompt_uses_recognizable_names() -> None:
 def test_invalid_generation_requests_are_rejected(payload: dict) -> None:
     with pytest.raises(ValidationError):
         GenerationRequest.model_validate(payload)
-

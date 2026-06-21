@@ -185,34 +185,9 @@ class Storage:
         return [self._row_to_dict(row) for row in rows]
 
     def prune_completed(self, keep: int = 20) -> list[str]:
-        with self._connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            rows = connection.execute(
-                """
-                SELECT id, source_path, png_path, pdf_path
-                FROM generations
-                WHERE status = 'done'
-                ORDER BY completed_at DESC, id DESC
-                LIMIT -1 OFFSET ?
-                """,
-                (keep,),
-            ).fetchall()
-            if rows:
-                placeholders = ",".join("?" for _ in rows)
-                connection.execute(
-                    f"DELETE FROM generations WHERE id IN ({placeholders})",
-                    tuple(int(row["id"]) for row in rows),
-                )
-            connection.commit()
-
-        paths: list[str] = []
-        for row in rows:
-            paths.extend(
-                path
-                for path in (row["source_path"], row["png_path"], row["pdf_path"])
-                if path
-            )
-        return paths
+        # Historical method kept for compatibility; we no longer delete
+        # completed generations so every created coloring remains on disk.
+        return []
 
     def _row_to_dict(self, row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)

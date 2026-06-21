@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from .catalog import ACTION_BY_ID, CHARACTER_BY_ID
+from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, WORLD_BY_ID
 from .schemas import GenerationRequest
 
 
 def build_image_prompt(request: GenerationRequest) -> str:
+    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    if len(worlds) == 1:
+        world_text = worlds[0]
+    else:
+        world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
     characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
     if len(characters) == 1:
         character_text = characters[0]
@@ -26,6 +31,7 @@ def build_image_prompt(request: GenerationRequest) -> str:
     return f"""
 Create one printable children's coloring page for ages 3 to 5.
 
+Worlds: {world_text}.
 Subjects: {character_text}.
 Action: {action}.
 {custom}
@@ -34,6 +40,7 @@ Use a {composition}.
 The named characters must be immediately recognizable through their signature silhouette,
 face, costume or vehicle shape, while remaining a clean coloring-book drawing. Show every
 requested subject once and keep all subjects fully visible.
+When multiple worlds are selected, blend their iconic visual cues naturally in one simple scene.
 
 Art requirements:
 - pure black line art on a pure white background
@@ -46,4 +53,3 @@ Art requirements:
 - no scary expressions, danger, weapons, or visual clutter
 - one flat printable page, not a mockup, photograph, poster, or book spread
 """.strip()
-

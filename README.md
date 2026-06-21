@@ -1,6 +1,6 @@
 # Čarovné omaľovánky
 
-Súkromný rodinný generátor jednoduchých čiernobielych omaľovánok pre deti vo veku 3–5 rokov. Aplikácia kombinuje princezné, jednorožce, záchranárske šteniatka a postavy z Cars, vytvorí čistý A4 PNG/PDF a uchová posledných 20 výsledkov.
+Súkromný rodinný generátor jednoduchých čiernobielych omaľovánok pre deti vo veku 3–5 rokov. Aplikácia kombinuje princezné, jednorožce, záchranárske šteniatka, postavy z Cars aj K-pop Demon Hunters, vytvorí čistý A4 PNG/PDF a uchová všetky výsledky na disku.
 
 ## Funkcie
 
@@ -10,7 +10,9 @@ Súkromný rodinný generátor jednoduchých čiernobielych omaľovánok pre det
 - OpenAI Image API (`gpt-image-2`, stredná kvalita)
 - čistý čiernobiely PNG pri 300 DPI a A4 PDF
 - tlač priamo z prehliadača
-- posledných 20 omaľovánok
+- všetky vygenerované omaľovánky sú uložené na disku, v zozname sa zobrazuje posledných 20
+- download čiernobielej aj plnofarebnej verzie
+- tlač bez vzoru aj „omaľovánka so vzorom“ s malým farebným náhľadom v rohu
 - jedna aktívna generovacia úloha, obnova po reštarte
 - responzívne ovládanie pre tablet, mobil a desktop
 
@@ -67,7 +69,7 @@ OMALOVANKY_DATA_DIR=/srv/appdata/omalovanky
 OMALOVANKY_PORT=8081
 ```
 
-Pre OpenMediaVault Docker Compose plugin je pripravený samostatný príklad:
+Pre OpenMediaVault Docker Compose plugin je pripravený samostatný príklad, ktorý používa rovnaký `.env` štýl pre prenos `OPENAI_API_KEY`:
 
 - [`deploy/omv/compose.yml`](deploy/omv/compose.yml) – YAML určený priamo do poľa **File**
 - [`deploy/omv/environment.example`](deploy/omv/environment.example) – obsah poľa **Environment**
@@ -106,8 +108,10 @@ docker image prune -f
 - `GET /api/generations/{id}`
 - `GET /api/colorings?limit=20`
 - `GET /colorings/{id}.png`
+- `GET /colorings/{id}/color.png`
 - `GET /colorings/{id}.pdf`
 - `GET /colorings/{id}/print`
+- `GET /colorings/{id}/print-pattern`
 
 Príklad zadania:
 

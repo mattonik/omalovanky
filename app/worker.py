@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-from pathlib import Path
 
 from .image_provider import ImageProvider
 from .image_processing import ColoringProcessor
@@ -76,17 +75,9 @@ class GenerationWorker:
                 png_path=str(processed.png_path),
                 pdf_path=str(processed.pdf_path),
             )
-            self._prune_old_files()
         except Exception as exc:  # noqa: BLE001
             self.storage.mark_generation_failed(generation_id, self._friendly_error(exc))
         return True
-
-    def _prune_old_files(self) -> None:
-        for raw_path in self.storage.prune_completed(keep=20):
-            try:
-                Path(raw_path).unlink(missing_ok=True)
-            except OSError:
-                continue
 
     def _run(self) -> None:
         while not self._stop_event.is_set():

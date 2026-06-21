@@ -24,7 +24,9 @@ const elements = {
   resultImage: document.querySelector("#resultImage"),
   resultSummary: document.querySelector("#resultSummary"),
   printButton: document.querySelector("#printButton"),
+  patternPrintButton: document.querySelector("#patternPrintButton"),
   pngButton: document.querySelector("#pngButton"),
+  colorButton: document.querySelector("#colorButton"),
   pdfButton: document.querySelector("#pdfButton"),
   recentSection: document.querySelector("#recentSection"),
   recentRail: document.querySelector("#recentRail"),
@@ -166,7 +168,9 @@ async function showResult(item) {
   elements.resultImage.src = `${item.png_url}?v=${Date.now()}`;
   elements.paperFrame.className = `paper-frame ${item.request.orientation}`;
   elements.printButton.href = item.print_url;
+  elements.patternPrintButton.href = item.pattern_print_url || item.print_url;
   elements.pngButton.href = item.png_url;
+  elements.colorButton.href = item.color_url;
   elements.pdfButton.href = item.pdf_url;
 
   const labels = item.request.characters

@@ -110,6 +110,15 @@ def create_app(
         item = require_completed_generation(storage, generation_id)
         return serve_file(item["png_path"], "image/png", f"omalovanka-{generation_id}.png")
 
+    @app.get("/colorings/{generation_id}/color.png")
+    def download_color_png(generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        return serve_file(
+            item["source_path"],
+            "image/png",
+            f"omalovanka-{generation_id}-farebna.png",
+        )
+
     @app.get("/colorings/{generation_id}.pdf")
     def download_pdf(generation_id: int):
         item = require_completed_generation(storage, generation_id)
@@ -124,6 +133,24 @@ def create_app(
             context={
                 "generation_id": generation_id,
                 "orientation": item["request"]["orientation"],
+                "mode": "plain",
+                "lineart_url": f"/colorings/{generation_id}.png",
+                "color_url": f"/colorings/{generation_id}/color.png",
+            },
+        )
+
+    @app.get("/colorings/{generation_id}/print-pattern")
+    def print_coloring_pattern(request: Request, generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        return templates.TemplateResponse(
+            request=request,
+            name="print.html",
+            context={
+                "generation_id": generation_id,
+                "orientation": item["request"]["orientation"],
+                "mode": "pattern",
+                "lineart_url": f"/colorings/{generation_id}.png",
+                "color_url": f"/colorings/{generation_id}/color.png",
             },
         )
 
@@ -153,7 +180,11 @@ def serialize_generation(item: dict) -> GenerationStatus:
         error=item["error"],
         png_url=f"/colorings/{generation_id}.png" if done and item["png_path"] else None,
         pdf_url=f"/colorings/{generation_id}.pdf" if done and item["pdf_path"] else None,
+        color_url=f"/colorings/{generation_id}/color.png" if done and item["source_path"] else None,
         print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
+        pattern_print_url=f"/colorings/{generation_id}/print-pattern"
+        if done and item["png_path"] and item["source_path"]
+        else None,
     )
 
 
