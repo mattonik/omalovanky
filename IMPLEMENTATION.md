@@ -127,3 +127,16 @@
   - E2E overilo, že UI funguje aj po odstránení predvyplneného textu, s novými tlačidlami pre farebnú verziu a patterned print.
 - Commit: `fdc7379` (`Allow theme-only generation and color previews`).
 - Zostáva: ak bude treba, môžeme ešte jemne doladiť texty alebo poradie prvkov, ale funkčne je požiadavka uzavretá.
+
+## 2026-06-21 — Zmena: prepínateľné generovanie line art / color-first
+
+- Rozsah: explicitný režim `line_art_direct` vs. `color_first`, lokálny prevod farebného vstupu na omaľovánku, fallback na OpenAI `images.edit` pri zlyhaní lokálneho spracovania a UI prepínač režimu.
+- Zmenené subsystémy: `GenerationRequest`, prompt builder, OpenAI klient, worker, builder UI, výsledkové akcie a testy.
+- Rozhodnutia: štandardný režim ostáva `line_art_direct`, aby bežné omaľovánky pálili minimum kreditov; `color_first` generuje farebný zdrojový obrázok a čiernobielu verziu odvodenú lokálne, pričom fallback edit sa použije len pri zlyhaní alebo nevyhovujúcej konverzii.
+- Známe obmedzenia: farebný preview je stále ilustračný referenčný obrázok, nie pixelovo identická kópia finálnej čiernobielej stránky; pri fallback edit sa výsledok môže mierne líšiť od lokálneho prevodu.
+- Testy:
+  - `.venv/bin/python -m py_compile app/*.py tests/*.py` — úspech.
+  - `./scripts/check.sh` — úspech: 23 unit/integration testov, 2 Playwright E2E testy a Docker build.
+  - E2E overilo prepnutie režimu na `Farebný základ` a zobrazenie farebnej verzie aj patterned print akcií.
+- Commit: `a3bbefe` (`Add line-art and color-first generation modes`).
+- Zostáva: ak budeme chcieť, môžeme ešte doladiť heuristiku, kedy presne sa použije OpenAI edit fallback namiesto lokálneho prevodu.

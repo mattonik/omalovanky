@@ -10,6 +10,7 @@ Súkromný rodinný generátor jednoduchých omaľovánok pre deti vo veku 3–5
 - OpenAI Image API (`gpt-image-2`, stredná kvalita)
 - čistý čiernobiely PNG pri 300 DPI a A4 PDF
 - samostatný farebný PNG ako vzor pre vyfarbovanie
+- prepínateľný režim `Priama omaľovánka` alebo `Farebný základ`
 - tlač priamo z prehliadača
 - všetky vygenerované omaľovánky sú uložené na disku, v zozname sa zobrazuje posledných 20
 - download čiernobielej aj plnofarebnej verzie
@@ -114,6 +115,8 @@ docker image prune -f
 - `GET /colorings/{id}/print`
 - `GET /colorings/{id}/print-pattern`
 
+Predvolený režim je `Priama omaľovánka`. Táto vetva ide cez jednu generáciu do OpenAI a potom sa lokálne rasterizuje na čiernobielu A4 stránku. Režim `Farebný základ` vytvorí farebný referenčný obrázok, z ktorého sa lokálne spraví omaľovánka; ak lokálne spracovanie zlyhá, worker môže použiť OpenAI `images.edit` s vloženým farebným zdrojom ako fallback.
+
 Príklad zadania:
 
 ```json
@@ -122,7 +125,8 @@ Príklad zadania:
   "characters": ["lightning-mcqueen", "mater"],
   "action": "racing",
   "custom_idea": "pretekajú spolu po širokej ceste",
-  "orientation": "landscape"
+  "orientation": "landscape",
+  "generation_mode": "color_first"
 }
 ```
 
