@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi import FastAPI, HTTPException, Path as RoutePath, Query, Request, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -12,9 +12,10 @@ from fastapi.templating import Jinja2Templates
 from .catalog import catalog_payload
 from .config import Settings, settings
 from .image_provider import ImageProvider, OpenAIImageProvider
-from .prompting import build_color_preview_prompt, build_image_prompt
-from .schemas import GenerationRequest, GenerationStatus
-from .storage import ActiveGenerationError, GenerationNotFoundError, Storage
+from .image_processing import COMIC_PAGE_COUNT
+from .prompting import build_color_preview_prompt, build_comic_page_prompts, build_image_prompt
+from .schemas import ComicPageStatus, ComicRequest, ComicStatus, GenerationRequest, GenerationStatus
+from .storage import ActiveGenerationError, ComicNotFoundError, GenerationNotFoundError, Storage
 from .worker import GenerationWorker
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -99,6 +100,23 @@ def create_app(
         worker.wake()
         return serialize_generation(item)
 
+    @app.post(
+        "/api/comics",
+        response_model=ComicStatus,
+        status_code=status.HTTP_202_ACCEPTED,
+    )
+    def create_comic(payload: ComicRequest):
+        prompts = build_comic_page_prompts(payload)
+        try:
+            item = storage.create_comic(payload, prompts)
+        except ActiveGenerationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "generation_in_progress", "message": str(exc)},
+            ) from exc
+        worker.wake()
+        return serialize_comic(item)
+
     @app.get("/api/generations/{generation_id}", response_model=GenerationStatus)
     def get_generation(generation_id: int):
         try:
@@ -106,9 +124,20 @@ def create_app(
         except GenerationNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.get("/api/comics/{comic_id}", response_model=ComicStatus)
+    def get_comic(comic_id: int):
+        try:
+            return serialize_comic(storage.get_comic(comic_id))
+        except ComicNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @app.get("/api/colorings", response_model=list[GenerationStatus])
     def list_colorings(limit: int = Query(default=20, ge=1, le=20)):
         return [serialize_generation(item) for item in storage.list_completed(limit)]
+
+    @app.get("/api/comics", response_model=list[ComicStatus])
+    def list_comics(limit: int = Query(default=20, ge=1, le=20)):
+        return [serialize_comic(item) for item in storage.list_completed_comics(limit)]
 
     @app.get("/colorings/{generation_id}.png")
     def download_png(generation_id: int):
@@ -130,6 +159,42 @@ def create_app(
     def download_pdf(generation_id: int):
         item = require_completed_generation(storage, generation_id)
         return serve_file(item["pdf_path"], "application/pdf", f"omalovanka-{generation_id}.pdf")
+
+    @app.get("/comics/{comic_id}/color.pdf")
+    def download_comic_color_pdf(comic_id: int):
+        item = require_completed_comic(storage, comic_id)
+        return serve_file(item["color_pdf_path"], "application/pdf", f"komiks-{comic_id}-farebny.pdf")
+
+    @app.get("/comics/{comic_id}/line-art.pdf")
+    def download_comic_line_art_pdf(comic_id: int):
+        item = require_completed_comic(storage, comic_id)
+        return serve_file(
+            item["line_art_pdf_path"],
+            "application/pdf",
+            f"komiks-{comic_id}-omalovankovy.pdf",
+        )
+
+    @app.get("/comics/{comic_id}/pages/{page_number}/color.png")
+    def download_comic_page_color(
+        comic_id: int,
+        page_number: int = RoutePath(ge=1, le=COMIC_PAGE_COUNT),
+    ):
+        item = require_completed_comic(storage, comic_id)
+        page = require_comic_page(item, page_number)
+        return serve_file(page["color_path"], "image/png", f"komiks-{comic_id}-{page_number}-farebny.png")
+
+    @app.get("/comics/{comic_id}/pages/{page_number}/line-art.png")
+    def download_comic_page_line_art(
+        comic_id: int,
+        page_number: int = RoutePath(ge=1, le=COMIC_PAGE_COUNT),
+    ):
+        item = require_completed_comic(storage, comic_id)
+        page = require_comic_page(item, page_number)
+        return serve_file(
+            page["line_art_path"],
+            "image/png",
+            f"komiks-{comic_id}-{page_number}-omalovankovy.png",
+        )
 
     @app.get("/colorings/{generation_id}/print")
     def print_coloring(request: Request, generation_id: int):
@@ -197,6 +262,37 @@ def serialize_generation(item: dict) -> GenerationStatus:
     )
 
 
+def serialize_comic(item: dict) -> ComicStatus:
+    comic_id = int(item["id"])
+    done = item["status"] == "done"
+    pages = []
+    for page in item["pages"]:
+        page_number = int(page["page_number"])
+        pages.append(
+            ComicPageStatus(
+                page_number=page_number,
+                color_url=f"/comics/{comic_id}/pages/{page_number}/color.png"
+                if done and page["color_path"]
+                else None,
+                line_art_url=f"/comics/{comic_id}/pages/{page_number}/line-art.png"
+                if done and page["line_art_path"]
+                else None,
+            )
+        )
+    return ComicStatus(
+        id=comic_id,
+        status=item["status"],
+        request=ComicRequest.model_validate(item["request"]),
+        error=item["error"],
+        pages=pages,
+        color_pdf_url=f"/comics/{comic_id}/color.pdf" if done and item["color_pdf_path"] else None,
+        line_art_pdf_url=f"/comics/{comic_id}/line-art.pdf"
+        if done and item["line_art_pdf_path"]
+        else None,
+        print_url=f"/comics/{comic_id}/line-art.pdf" if done and item["line_art_pdf_path"] else None,
+    )
+
+
 def require_completed_generation(storage: Storage, generation_id: int) -> dict:
     try:
         item = storage.get_generation(generation_id)
@@ -205,6 +301,32 @@ def require_completed_generation(storage: Storage, generation_id: int) -> dict:
     if item["status"] != "done":
         raise HTTPException(status_code=409, detail="Omaľovánka ešte nie je hotová.")
     return item
+
+
+def require_completed_comic(storage: Storage, comic_id: int) -> dict:
+    try:
+        item = storage.get_comic(comic_id)
+    except ComicNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if item["status"] != "done":
+        raise HTTPException(status_code=409, detail="Komiks ešte nie je hotový.")
+    if not item["color_pdf_path"] or not item["line_art_pdf_path"]:
+        raise HTTPException(status_code=409, detail="Komiks nemá kompletné PDF výstupy.")
+    complete_pages = [
+        page
+        for page in item["pages"]
+        if page["color_path"] and page["line_art_path"]
+    ]
+    if len(complete_pages) != COMIC_PAGE_COUNT:
+        raise HTTPException(status_code=409, detail="Komiks nemá kompletné stránky.")
+    return item
+
+
+def require_comic_page(item: dict, page_number: int) -> dict:
+    for page in item["pages"]:
+        if int(page["page_number"]) == page_number:
+            return page
+    raise HTTPException(status_code=404, detail="Strana komiksu neexistuje.")
 
 
 def serve_file(raw_path: str | None, media_type: str, filename: str) -> FileResponse:

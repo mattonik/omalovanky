@@ -34,6 +34,17 @@
         </div>
 
         <form id="generationForm">
+          <section class="mode-switch" aria-label="Typ tvorby">
+            <button class="selected" type="button" data-creation-mode="coloring" aria-pressed="true">
+              <span aria-hidden="true">✎</span>
+              Omaľovánka
+            </button>
+            <button type="button" data-creation-mode="comic" aria-pressed="false">
+              <span aria-hidden="true">▦</span>
+              Komiksová knižka
+            </button>
+          </section>
+
           <fieldset class="builder-section">
             <legend><span>1.</span> Vyber tému</legend>
             <div class="world-grid">
@@ -79,7 +90,7 @@
             <p class="selection-hint" id="selectionHint">Postavy sú voliteľné. Môžeš nechať len tému.</p>
           </fieldset>
 
-          <fieldset class="builder-section action-section">
+          <fieldset class="builder-section action-section" id="coloringOptions">
             <legend><span>3.</span> Čo robia?</legend>
             <div class="action-layout">
               <div class="action-grid">
@@ -108,8 +119,46 @@
             </div>
           </fieldset>
 
+          <fieldset class="builder-section action-section" id="comicOptions" hidden>
+            <legend><span>3.</span> Aký príbeh?</legend>
+            <div class="action-layout">
+              <div class="action-grid">
+                <button class="action-card selected" type="button" data-story-type="trip" aria-pressed="true">
+                  <span class="action-icon" aria-hidden="true">🧭</span>
+                  <strong>Výlet</strong>
+                </button>
+                <button class="action-card" type="button" data-story-type="rescue" aria-pressed="false">
+                  <span class="action-icon" aria-hidden="true">🛟</span>
+                  <strong>Záchrana</strong>
+                </button>
+                <button class="action-card" type="button" data-story-type="race" aria-pressed="false">
+                  <span class="action-icon" aria-hidden="true">🏁</span>
+                  <strong>Preteky</strong>
+                </button>
+                <button class="action-card" type="button" data-story-type="surprise" aria-pressed="false">
+                  <span class="action-icon" aria-hidden="true">🎁</span>
+                  <strong>Prekvapenie</strong>
+                </button>
+                <button class="action-card" type="button" data-story-type="calm_day" aria-pressed="false">
+                  <span class="action-icon" aria-hidden="true">☀</span>
+                  <strong>Pokojný deň</strong>
+                </button>
+              </div>
+              <label class="idea-field">
+                <span>Nápad na knižku</span>
+                <textarea
+                  id="comicIdea"
+                  maxlength="300"
+                  rows="2"
+                  placeholder="napríklad: nájdu stratenú hviezdičku a pomôžu jej domov"
+                ></textarea>
+                <small><span id="comicIdeaCount">0</span>/300</small>
+              </label>
+            </div>
+          </fieldset>
+
           <section class="generation-bar" aria-label="Nastavenia generovania">
-            <div class="setting-group">
+            <div class="setting-group" id="paperSetting">
               <span class="setting-label">Papier</span>
               <div class="segmented-control" id="orientationControl">
                 <button class="selected" type="button" data-orientation="portrait" aria-pressed="true">
@@ -120,7 +169,7 @@
                 </button>
               </div>
             </div>
-            <div class="setting-group">
+            <div class="setting-group" id="renderSetting">
               <span class="setting-label">Režim</span>
               <div class="segmented-control" id="renderModeControl">
                 <button class="selected" type="button" data-generation-mode="line_art_direct" aria-pressed="true">
@@ -133,12 +182,25 @@
               <span class="setting-label">Zložitosť</span>
               <div class="fixed-setting"><span aria-hidden="true">☺</span> Pre deti 3–5 rokov</div>
             </div>
+            <div class="setting-group" id="comicModeSetting" hidden>
+              <span class="setting-label">Náhľad</span>
+              <div class="segmented-control" id="comicModeControl">
+                <button class="selected" type="button" data-primary-mode="line_art" aria-pressed="true">
+                  <span aria-hidden="true">✎</span> Omaľovánkový
+                </button>
+                <button type="button" data-primary-mode="color" aria-pressed="false">
+                  <span aria-hidden="true">🎨</span> Farebný
+                </button>
+              </div>
+              <span class="setting-label">Formát</span>
+              <div class="fixed-setting"><span aria-hidden="true">▦</span> A4 mini-zine</div>
+            </div>
             <div class="submit-group">
               <button id="generateButton" class="primary-button" type="submit">
                 <span aria-hidden="true">✦</span>
                 Vytvoriť omaľovánku
               </button>
-              <small>◷ 1 obrázok <span>•</span> približne minúta</small>
+              <small id="generationEstimate">◷ 1 obrázok <span>•</span> približne minúta</small>
             </div>
           </section>
           <div id="formError" class="form-error" role="alert" hidden></div>
@@ -161,6 +223,7 @@
             <div class="paper-frame portrait" id="paperFrame">
               <img id="resultImage" alt="Vygenerovaná omaľovánka" />
             </div>
+            <div class="comic-pages" id="comicPages" hidden></div>
             <button id="retryButton" class="retry-button" type="button">
               <span aria-hidden="true">↻</span>
               Niečo na obrázku nesedí? <strong>Skúsiť znova</strong>
@@ -196,6 +259,10 @@
                 <path d="M6 2h8l4 4v16H6zM14 2v5h5" />
               </svg>
               Stiahnuť PDF
+            </a>
+            <a id="comicColorPdfButton" class="result-button outline" download hidden>
+              <span aria-hidden="true">🎨</span>
+              Stiahnuť farebnú knižku
             </a>
             <button id="similarButton" class="result-button outline" type="button">
               <span aria-hidden="true">✦</span>

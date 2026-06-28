@@ -195,6 +195,32 @@ fieldset {
   margin-top: 18px;
 }
 
+.mode-switch {
+  width: min(620px, 100%);
+  margin: 0 auto 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  border: 1px solid #cfd8e7;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.mode-switch button {
+  min-height: 58px;
+  border: 0;
+  background: #fff;
+  cursor: pointer;
+  color: #314a70;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.mode-switch button.selected {
+  color: #fff;
+  background: var(--violet);
+}
+
 .builder-section legend {
   margin-bottom: 10px;
   color: var(--ink);
@@ -678,6 +704,28 @@ fieldset {
 }
 
 .paper-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.comic-pages {
+  width: min(620px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comic-page-thumb {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid #d9dce5;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(40, 48, 79, 0.12);
+}
+
+.comic-page-thumb img {
   width: 100%;
   height: 100%;
   object-fit: contain;

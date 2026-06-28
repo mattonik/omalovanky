@@ -1,7 +1,65 @@
 from __future__ import annotations
 
 from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, WORLD_BY_ID
-from .schemas import GenerationRequest
+from .schemas import ComicRequest, GenerationRequest
+
+COMIC_STORY_TYPES = {
+    "trip": (
+        "Výlet",
+        (
+            "getting ready for a small trip",
+            "noticing a friendly surprise on the path",
+            "helping each other continue",
+            "finding a cheerful place to rest",
+            "sharing a happy moment together",
+            "going home content and calm",
+        ),
+    ),
+    "rescue": (
+        "Záchrana",
+        (
+            "spotting someone who needs gentle help",
+            "making a simple safe plan",
+            "working together kindly",
+            "solving the small problem",
+            "celebrating the rescue",
+            "everyone waving goodbye happily",
+        ),
+    ),
+    "race": (
+        "Preteky",
+        (
+            "getting ready for a friendly race",
+            "starting slowly and safely",
+            "encouraging each other",
+            "passing a funny obstacle",
+            "finishing together",
+            "resting proudly after the race",
+        ),
+    ),
+    "surprise": (
+        "Prekvapenie",
+        (
+            "finding a mysterious friendly clue",
+            "following it with curiosity",
+            "meeting a helpful friend",
+            "opening a small cheerful surprise",
+            "sharing the surprise",
+            "ending with a cozy happy scene",
+        ),
+    ),
+    "calm_day": (
+        "Pokojný deň",
+        (
+            "starting a quiet happy morning",
+            "playing gently together",
+            "noticing something beautiful nearby",
+            "making or fixing something simple",
+            "sharing a snack or rest",
+            "ending the day peacefully",
+        ),
+    ),
+}
 
 
 def build_image_prompt(request: GenerationRequest) -> str:
@@ -151,3 +209,47 @@ Art requirements:
 - no text, letters, numbers, speech bubbles, logos, watermarks, borders, or page decorations
 - one flat printable page, not a mockup, photograph, poster, or book spread
 """.strip()
+
+
+def build_comic_page_prompts(request: ComicRequest) -> list[str]:
+    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    world_text = worlds[0] if len(worlds) == 1 else ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
+    characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+    if characters:
+        character_text = characters[0] if len(characters) == 1 else ", ".join(characters[:-1]) + f", and {characters[-1]}"
+        subjects = f"Main recurring subjects: {character_text}."
+        identity = "Keep the same subjects recognizable and visually consistent across the story."
+    else:
+        subjects = "Main recurring subjects: none selected."
+        identity = "Use the selected worlds as recurring visual anchors across the story."
+    story_label, beats = COMIC_STORY_TYPES[request.story_type]
+    custom = (
+        f"Parent's extra idea for the whole story: {request.custom_idea}."
+        if request.custom_idea
+        else "No extra parent idea was provided."
+    )
+    prompts = []
+    for index, beat in enumerate(beats, start=1):
+        prompts.append(
+            f"""
+Create page {index} of 6 for a wordless children's picture mini-comic for ages 3 to 5.
+
+Story type: {story_label}.
+Worlds: {world_text}.
+{subjects}
+Story beat for this page: {beat}.
+{custom}
+
+{identity}
+This must work without reading. Show one clear action, expressive poses, and an obvious visual sequence.
+Simple symbols such as hearts, stars, arrows, sparkles, or music notes are allowed when useful.
+
+Art requirements:
+- full-color friendly children's illustration on a clean light background
+- simple bold shapes, readable silhouettes, and minimal background detail
+- no text, letters, numbers, speech bubbles, logos, captions, watermarks, signs, or labels
+- no scary expressions, danger, weapons, or clutter
+- one flat square-ish panel illustration, not a book mockup, page layout, collage, poster, or grid
+""".strip()
+        )
+    return prompts

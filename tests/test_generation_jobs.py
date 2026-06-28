@@ -86,6 +86,23 @@ def test_api_rejects_second_active_generation(tmp_path: Path) -> None:
     assert second.json()["detail"]["code"] == "generation_in_progress"
 
 
+def test_idle_worker_does_not_exhaust_sqlite_connections(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path)
+    provider = FakeImageProvider()
+    storage = Storage(settings.db_path)
+    storage.init_db()
+    worker = GenerationWorker(
+        storage=storage,
+        image_provider=provider,
+        colorings_dir=settings.colorings_dir,
+    )
+
+    for _ in range(300):
+        assert worker.process_one() is False
+
+    assert storage.list_completed() == []
+
+
 def test_worker_generates_source_image_and_marks_job_done(tmp_path: Path) -> None:
     settings = make_settings(tmp_path)
     provider = FakeImageProvider()
