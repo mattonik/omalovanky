@@ -325,7 +325,11 @@ async function showResult(item, isComic = false) {
     elements.pdfButton.textContent = "Stiahnuť PDF knižky";
   } else {
     elements.recentSection.hidden = true;
-    elements.resultImage.src = `${item.request.generation_mode === "color_first" ? (item.color_url || item.png_url) : item.png_url}?v=${Date.now()}`;
+    const previewUrl = item.request.generation_mode === "color_first" ? (item.color_url || item.png_url) : item.png_url;
+    elements.resultImage.onerror = () => {
+      if (previewUrl !== item.png_url && item.png_url) elements.resultImage.src = `${item.png_url}?v=${Date.now()}`;
+    };
+    elements.resultImage.src = `${previewUrl}?v=${Date.now()}`;
     elements.paperFrame.className = `paper-frame ${item.request.orientation}`;
     elements.pdfButton.href = item.request.generation_mode === "color_first" ? (item.color_pdf_url || item.pdf_url) : item.pdf_url;
     elements.pdfButton.textContent = item.request.generation_mode === "color_first" ? "Stiahnuť farebné PDF" : "Stiahnuť PDF";
