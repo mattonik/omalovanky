@@ -9,6 +9,7 @@ try {
 }
 
 const state = {
+  worlds: new Set(),
   characters: new Set(),
   scenes: new Set(),
   action: "riding",
@@ -58,6 +59,21 @@ const setSelected = (element, selected) => {
   element.setAttribute("aria-pressed", String(selected));
 };
 
+document.querySelectorAll("[data-world-id].world-card").forEach((button) => {
+  button.addEventListener("click", () => {
+    const worldId = button.dataset.worldId;
+    if (state.worlds.has(worldId)) {
+      state.worlds.delete(worldId);
+      catalog.characters
+        .filter((character) => character.world_id === worldId)
+        .forEach((character) => state.characters.delete(character.id));
+    } else if (state.worlds.size < 4) {
+      state.worlds.add(worldId);
+    }
+    syncSelections();
+  });
+});
+
 document.querySelectorAll("[data-character-id]").forEach((button) => {
   button.addEventListener("click", () => {
     const characterId = button.dataset.characterId;
@@ -70,6 +86,7 @@ document.querySelectorAll("[data-character-id]").forEach((button) => {
         return;
       }
       state.characters.add(characterId);
+      state.worlds.add(button.dataset.worldId);
     }
     elements.selectionHint.textContent = state.characters.size
       ? "Môžeš vybrať najviac 4 postavy."
@@ -161,6 +178,9 @@ document.querySelector("#similarButton").addEventListener("click", showBuilder);
 document.querySelector("#retryButton").addEventListener("click", createGeneration);
 
 const syncSelections = () => {
+  document.querySelectorAll(".world-card").forEach((button) => {
+    setSelected(button, state.worlds.has(button.dataset.worldId));
+  });
   document.querySelectorAll(".character-card").forEach((button) => {
     setSelected(button, state.characters.has(button.dataset.characterId));
   });
@@ -173,9 +193,9 @@ const syncSelections = () => {
 };
 
 const requestPayload = () => ({
-  worlds: [...new Set([...state.characters].map((id) =>
+  worlds: [...new Set([...state.worlds, ...[...state.characters].map((id) =>
     catalog.characters.find((character) => character.id === id)?.world_id
-  ).filter(Boolean))],
+  ).filter(Boolean)])],
   characters: [...state.characters],
   scenes: [...state.scenes],
   action: state.action,
@@ -185,9 +205,9 @@ const requestPayload = () => ({
 });
 
 const comicPayload = () => ({
-  worlds: [...new Set([...state.characters].map((id) =>
+  worlds: [...new Set([...state.worlds, ...[...state.characters].map((id) =>
     catalog.characters.find((character) => character.id === id)?.world_id
-  ).filter(Boolean))],
+  ).filter(Boolean)])],
   characters: [...state.characters],
   scenes: [...state.scenes],
   story_type: state.storyType,

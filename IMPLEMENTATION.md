@@ -140,3 +140,12 @@
   - E2E overilo prepnutie režimu na `Farebný základ` a zobrazenie farebnej verzie aj patterned print akcií.
 - Commit: `a3bbefe` (`Add line-art and color-first generation modes`).
 - Zostáva: ak budeme chcieť, môžeme ešte doladiť heuristiku, kedy presne sa použije OpenAI edit fallback namiesto lokálneho prevodu.
+
+## 2026-09-07 – Oprava výberu tém
+
+- Rozsah: obnovenie samostatného výberu svetov/tém v UI.
+- Zmenené subsystémy: Jinja obrazovka výberu, klientsky stav a request payload.
+- Rozhodnutie: téma je voliteľná nezávisle od postáv; výber postavy tému automaticky pridá a zrušenie témy odstráni jej postavy.
+- Testy: `node --check app/static/app.js`, `.venv/bin/python -m py_compile app/*.py`, `./scripts/check.sh`.
+- Výsledok: 33 unit/integration testov, 3 Playwright E2E testy a Docker build úspešné.
+- Zostávajúce obmedzenia: maximálne 4 témy aj 4 postavy podľa existujúcej validácie.

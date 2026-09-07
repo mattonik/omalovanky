@@ -88,6 +88,8 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
 
         assert page.get_by_role("button", name="Na šírku").get_attribute("aria-pressed") == "true"
         assert page.get_by_role("button", name="Hrad").is_visible()
+        assert page.get_by_role("button", name="Autá").is_visible()
+        page.get_by_role("button", name="Autá").click()
         page.get_by_role("button", name="Bleskový McQueen").click()
         page.get_by_role("button", name="Mater / Burák").click()
         page.get_by_role("button", name="Pretekajú").click()
