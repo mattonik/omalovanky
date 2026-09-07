@@ -30,7 +30,7 @@
           <span class="sparkle sparkle-left" aria-hidden="true">✦</span>
           <h1>Čo dnes vyfarbíme?</h1>
           <span class="sparkle sparkle-right" aria-hidden="true">✦</span>
-          <p>Vyber tému, postavy, scénu a papier.</p>
+          <p>Vyber postavy, scénu a papier.</p>
         </div>
 
         <section id="jobsSection" class="jobs-section" hidden aria-live="polite">
@@ -51,26 +51,7 @@
           </section>
 
           <fieldset class="builder-section">
-            <legend><span>1.</span> Vyber tému</legend>
-            <div class="world-grid">
-              {% for world in catalog.worlds %}
-                <button
-                  class="world-card"
-                  type="button"
-                  data-world-id="{{ world.id }}"
-                  aria-pressed="false"
-                >
-                  <span class="selection-check" aria-hidden="true">✓</span>
-                  <img src="{{ world.asset }}" alt="" width="627" height="627" />
-                  <strong>{{ world.label }}</strong>
-                </button>
-              {% endfor %}
-            </div>
-            <p class="selection-hint">Vyber jednu alebo viac tém.</p>
-          </fieldset>
-
-          <fieldset class="builder-section">
-            <legend><span>2.</span> Postavy (voliteľné)</legend>
+            <legend><span>1.</span> Postavy (voliteľné)</legend>
             <div class="character-themes">
               {% for theme in catalog.character_themes %}
                 <section class="character-theme">
@@ -99,8 +80,13 @@
           </fieldset>
 
           <fieldset class="builder-section">
-            <legend><span>3.</span> Scéna alebo pozadie (voliteľné)</legend>
+            <legend><span>2.</span> Pozadie (voliteľné)</legend>
             <div class="scene-grid">
+              <button class="scene-card selected" type="button" data-no-background="true" aria-pressed="true">
+                <span class="selection-check" aria-hidden="true">✓</span>
+                <span class="scene-icon" aria-hidden="true">○</span>
+                <strong>Bez pozadia</strong>
+              </button>
               {% for scene in catalog.scenes %}
                 <button class="scene-card" type="button" data-scene-id="{{ scene.id }}" aria-pressed="false">
                   <span class="selection-check" aria-hidden="true">✓</span>
@@ -109,11 +95,11 @@
                 </button>
               {% endfor %}
             </div>
-            <p class="selection-hint">Ak nič nevyberieš, obrázok bude iba s postavami.</p>
+            <p class="selection-hint">Vyber jedno alebo viac pozadí, alebo nechaj iba postavy.</p>
           </fieldset>
 
           <fieldset class="builder-section action-section" id="coloringOptions">
-            <legend><span>4.</span> Čo robia?</legend>
+            <legend><span>3.</span> Čo robia?</legend>
             <div class="action-layout">
               <div class="action-grid">
                 {% for action in catalog.actions %}
@@ -142,7 +128,7 @@
           </fieldset>
 
           <fieldset class="builder-section action-section" id="comicOptions" hidden>
-            <legend><span>4.</span> Aký príbeh?</legend>
+            <legend><span>3.</span> Aký príbeh?</legend>
             <div class="action-layout">
               <div class="action-grid">
                 <button class="action-card selected" type="button" data-story-type="trip" aria-pressed="true">

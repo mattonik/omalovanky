@@ -88,7 +88,6 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
 
         assert page.get_by_role("button", name="Na šírku").get_attribute("aria-pressed") == "true"
         assert page.get_by_role("button", name="Hrad").is_visible()
-        assert page.get_by_role("button", name="Autá").is_visible()
         page.get_by_role("button", name="Autá").click()
         page.get_by_role("button", name="Bleskový McQueen").click()
         page.get_by_role("button", name="Mater / Burák").click()
@@ -129,6 +128,8 @@ def test_mobile_builder_has_no_horizontal_overflow(live_app: str) -> None:
         page = browser.new_page(viewport={"width": 390, "height": 844})
         page.goto(live_app, wait_until="networkidle")
 
+        assert page.locator(".world-card").count() == 0
+        assert page.get_by_role("button", name="Bez pozadia").get_attribute("aria-pressed") == "true"
         has_overflow = page.evaluate(
             "() => document.documentElement.scrollWidth > document.documentElement.clientWidth"
         )
