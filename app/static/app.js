@@ -1,12 +1,12 @@
 const catalog = JSON.parse(document.querySelector("#catalogData").textContent);
 
 const state = {
-  worlds: new Set(["princesses", "unicorns"]),
   characters: new Set(),
+  scenes: new Set(),
   action: "riding",
   creationMode: "coloring",
   storyType: "trip",
-  orientation: "portrait",
+  orientation: "landscape",
   generationMode: "line_art_direct",
   primaryMode: "line_art",
   current: null,
@@ -52,22 +52,6 @@ const setSelected = (element, selected) => {
   element.setAttribute("aria-pressed", String(selected));
 };
 
-document.querySelectorAll("[data-world-id].world-card").forEach((button) => {
-  button.addEventListener("click", () => {
-    const worldId = button.dataset.worldId;
-    if (state.worlds.has(worldId)) {
-      if (state.worlds.size === 1) return;
-      state.worlds.delete(worldId);
-      catalog.characters
-        .filter((character) => character.world_id === worldId)
-        .forEach((character) => state.characters.delete(character.id));
-    } else {
-      state.worlds.add(worldId);
-    }
-    syncSelections();
-  });
-});
-
 document.querySelectorAll("[data-character-id]").forEach((button) => {
   button.addEventListener("click", () => {
     const characterId = button.dataset.characterId;
@@ -80,12 +64,20 @@ document.querySelectorAll("[data-character-id]").forEach((button) => {
         return;
       }
       state.characters.add(characterId);
-      state.worlds.add(button.dataset.worldId);
     }
     elements.selectionHint.textContent = state.characters.size
-      ? "Môžeš vybrať najviac 4 postavy. Nechať ich prázdne je tiež v poriadku."
-      : "Postavy sú voliteľné. Môžeš nechať len tému.";
+      ? "Môžeš vybrať najviac 4 postavy."
+      : "Postavy sú voliteľné. Môžeš vybrať iba scénu.";
     elements.selectionHint.style.color = "";
+    syncSelections();
+  });
+});
+
+document.querySelectorAll("[data-scene-id]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const sceneId = button.dataset.sceneId;
+    if (state.scenes.has(sceneId)) state.scenes.delete(sceneId);
+    else if (state.scenes.size < 4) state.scenes.add(sceneId);
     syncSelections();
   });
 });
@@ -163,11 +155,11 @@ document.querySelector("#similarButton").addEventListener("click", showBuilder);
 document.querySelector("#retryButton").addEventListener("click", createGeneration);
 
 const syncSelections = () => {
-  document.querySelectorAll(".world-card").forEach((button) => {
-    setSelected(button, state.worlds.has(button.dataset.worldId));
-  });
   document.querySelectorAll(".character-card").forEach((button) => {
     setSelected(button, state.characters.has(button.dataset.characterId));
+  });
+  document.querySelectorAll(".scene-card").forEach((button) => {
+    setSelected(button, state.scenes.has(button.dataset.sceneId));
   });
   document.querySelectorAll("[data-generation-mode]").forEach((button) => {
     setSelected(button, button.dataset.generationMode === state.generationMode);
@@ -175,8 +167,11 @@ const syncSelections = () => {
 };
 
 const requestPayload = () => ({
-  worlds: [...state.worlds],
+  worlds: [...new Set([...state.characters].map((id) =>
+    catalog.characters.find((character) => character.id === id)?.world_id
+  ).filter(Boolean))],
   characters: [...state.characters],
+  scenes: [...state.scenes],
   action: state.action,
   custom_idea: elements.idea.value.trim(),
   orientation: state.orientation,
@@ -184,8 +179,11 @@ const requestPayload = () => ({
 });
 
 const comicPayload = () => ({
-  worlds: [...state.worlds],
+  worlds: [...new Set([...state.characters].map((id) =>
+    catalog.characters.find((character) => character.id === id)?.world_id
+  ).filter(Boolean))],
   characters: [...state.characters],
+  scenes: [...state.scenes],
   story_type: state.storyType,
   custom_idea: elements.comicIdea.value.trim(),
   primary_mode: state.primaryMode,

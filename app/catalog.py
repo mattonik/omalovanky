@@ -29,6 +29,14 @@ class Action:
     icon: str
 
 
+@dataclass(frozen=True, slots=True)
+class Scene:
+    id: str
+    label: str
+    prompt_text: str
+    icon: str
+
+
 WORLDS = (
     World("princesses", "Princezné", "👸", "violet", "/static/assets/world-princesses.png"),
     World("unicorns", "Jednorožce", "🦄", "pink", "/static/assets/world-unicorns.png"),
@@ -101,6 +109,21 @@ CHARACTERS = (
     ),
 )
 
+CHARACTER_THEMES = (
+    ("fairytales", "Rozprávky", ("princess", "unicorn")),
+    ("paw-patrol", "Labková patrola", ("zuma", "rocky", "skye", "chase", "marshall", "rubble", "mighty-pups")),
+    ("cars", "Autá", ("lightning-mcqueen", "mater", "sally", "cruz-ramirez", "jackson-storm", "mack")),
+    ("demon-hunters", "Demon Hunters", ("rumi", "mira", "zoey", "huntrix")),
+)
+
+SCENES = (
+    Scene("castle", "Hrad", "a simple friendly castle", "🏰"),
+    Scene("city", "Mesto", "a simple cheerful city street", "🏙️"),
+    Scene("forest", "Les", "a simple friendly forest", "🌲"),
+    Scene("park", "Park", "a simple sunny park", "🌳"),
+    Scene("beach", "Pláž", "a simple calm beach", "🏖️"),
+)
+
 ACTIONS = (
     Action("riding", "Jazdia", "riding together on a gentle adventure", "🦄"),
     Action("rescuing", "Zachraňujú", "performing a friendly rescue together", "🛡️"),
@@ -110,6 +133,7 @@ ACTIONS = (
 WORLD_BY_ID = {item.id: item for item in WORLDS}
 CHARACTER_BY_ID = {item.id: item for item in CHARACTERS}
 ACTION_BY_ID = {item.id: item for item in ACTIONS}
+SCENE_BY_ID = {item.id: item for item in SCENES}
 
 
 def catalog_payload() -> dict[str, list[dict[str, str]]]:
@@ -117,4 +141,13 @@ def catalog_payload() -> dict[str, list[dict[str, str]]]:
         "worlds": [asdict(item) for item in WORLDS],
         "characters": [asdict(item) for item in CHARACTERS],
         "actions": [asdict(item) for item in ACTIONS],
+        "character_themes": [
+            {
+                "id": theme_id,
+                "label": label,
+                "characters": [asdict(CHARACTER_BY_ID[character_id]) for character_id in character_ids],
+            }
+            for theme_id, label, character_ids in CHARACTER_THEMES
+        ],
+        "scenes": [asdict(item) for item in SCENES],
     }

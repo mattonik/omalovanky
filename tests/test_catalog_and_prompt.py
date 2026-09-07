@@ -22,6 +22,18 @@ def test_catalog_contains_requested_cars_characters() -> None:
     assert len(catalog_payload()["characters"]) == 19
 
 
+def test_catalog_groups_characters_and_exposes_optional_scenes() -> None:
+    payload = catalog_payload()
+
+    assert [theme["label"] for theme in payload["character_themes"]] == [
+        "Rozprávky",
+        "Labková patrola",
+        "Autá",
+        "Demon Hunters",
+    ]
+    assert {scene["id"] for scene in payload["scenes"]} >= {"castle", "city", "forest"}
+
+
 def test_princess_on_unicorn_prompt_is_simple_and_printable() -> None:
     request = GenerationRequest(
         worlds=["princesses", "unicorns"],
@@ -90,18 +102,27 @@ def test_kpop_demon_hunters_prompt_mentions_new_world_and_group() -> None:
     assert "HUNTR/X" in prompt
 
 
-def test_theme_only_generation_request_is_allowed() -> None:
+def test_character_selection_derives_its_theme() -> None:
     request = GenerationRequest(
-        worlds=["princesses"],
-        characters=[],
+        characters=["unicorn"],
         action="riding",
-        orientation="portrait",
     )
 
     prompt = build_image_prompt(request)
 
-    assert "Characters: none selected." in prompt
-    assert "Princezné" in prompt
+    assert request.worlds == ["unicorns"]
+    assert "magical unicorn" in prompt
+    assert "Jednorožce" in prompt
+    assert "fairy-tale princess" not in prompt
+
+
+def test_generation_defaults_to_landscape_without_background() -> None:
+    request = GenerationRequest(characters=["mater"], action="racing")
+    prompt = build_image_prompt(request)
+
+    assert request.orientation == "landscape"
+    assert "Background: no specific background scene." in prompt
+    assert "Do not add princesses, castles" in prompt
 
 
 def test_color_preview_prompt_requests_full_color_reference() -> None:
@@ -141,9 +162,9 @@ def test_color_preview_prompt_requests_full_color_reference() -> None:
             "custom_idea": "x" * 301,
         },
         {
-            "worlds": ["princesses"],
             "characters": ["unicorn"],
             "action": "riding",
+            "scenes": ["volcano"],
         },
     ],
 )

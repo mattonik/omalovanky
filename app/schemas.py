@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, WORLD_BY_ID
+from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, SCENE_BY_ID, WORLD_BY_ID
 
 Orientation = Literal["portrait", "landscape"]
 GenerationMode = Literal["line_art_direct", "color_first"]
@@ -13,11 +13,12 @@ ComicPrimaryMode = Literal["line_art", "color"]
 
 
 class GenerationRequest(BaseModel):
-    worlds: list[str] = Field(min_length=1, max_length=4)
+    worlds: list[str] = Field(default_factory=list, max_length=4)
     characters: list[str] = Field(default_factory=list, max_length=4)
+    scenes: list[str] = Field(default_factory=list, max_length=4)
     action: str
     custom_idea: str = Field(default="", max_length=300)
-    orientation: Orientation = "portrait"
+    orientation: Orientation = "landscape"
     generation_mode: GenerationMode = "line_art_direct"
 
     @field_validator("worlds")
@@ -40,6 +41,16 @@ class GenerationRequest(BaseModel):
             raise ValueError(f"Neznáme postavy: {', '.join(unknown)}")
         return values
 
+    @field_validator("scenes")
+    @classmethod
+    def validate_scenes(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("Scény sa nesmú opakovať.")
+        unknown = [value for value in values if value not in SCENE_BY_ID]
+        if unknown:
+            raise ValueError(f"Neznáme scény: {', '.join(unknown)}")
+        return values
+
     @field_validator("action")
     @classmethod
     def validate_action(cls, value: str) -> str:
@@ -54,17 +65,14 @@ class GenerationRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_character_worlds(self) -> "GenerationRequest":
-        if not self.characters:
-            return self
-        selected_worlds = set(self.worlds)
-        missing_worlds = {
-            CHARACTER_BY_ID[character_id].world_id
+        selected_worlds = list(dict.fromkeys(self.worlds))
+        selected_worlds.extend(
+            character.world_id
             for character_id in self.characters
-            if CHARACTER_BY_ID[character_id].world_id not in selected_worlds
-        }
-        if missing_worlds:
-            labels = ", ".join(WORLD_BY_ID[item].label for item in sorted(missing_worlds))
-            raise ValueError(f"Pre vybrané postavy chýbajú svety: {labels}.")
+            for character in [CHARACTER_BY_ID[character_id]]
+            if character.world_id not in selected_worlds
+        )
+        self.worlds = selected_worlds
         return self
 
 
@@ -81,8 +89,9 @@ class GenerationStatus(BaseModel):
 
 
 class ComicRequest(BaseModel):
-    worlds: list[str] = Field(min_length=1, max_length=4)
+    worlds: list[str] = Field(default_factory=list, max_length=4)
     characters: list[str] = Field(default_factory=list, max_length=4)
+    scenes: list[str] = Field(default_factory=list, max_length=4)
     story_type: ComicStoryType = "trip"
     custom_idea: str = Field(default="", max_length=300)
     primary_mode: ComicPrimaryMode = "line_art"
@@ -107,6 +116,16 @@ class ComicRequest(BaseModel):
             raise ValueError(f"Neznáme postavy: {', '.join(unknown)}")
         return values
 
+    @field_validator("scenes")
+    @classmethod
+    def validate_scenes(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("Scény sa nesmú opakovať.")
+        unknown = [value for value in values if value not in SCENE_BY_ID]
+        if unknown:
+            raise ValueError(f"Neznáme scény: {', '.join(unknown)}")
+        return values
+
     @field_validator("custom_idea")
     @classmethod
     def normalize_custom_idea(cls, value: str) -> str:
@@ -114,17 +133,14 @@ class ComicRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_character_worlds(self) -> "ComicRequest":
-        if not self.characters:
-            return self
-        selected_worlds = set(self.worlds)
-        missing_worlds = {
-            CHARACTER_BY_ID[character_id].world_id
+        selected_worlds = list(dict.fromkeys(self.worlds))
+        selected_worlds.extend(
+            character.world_id
             for character_id in self.characters
-            if CHARACTER_BY_ID[character_id].world_id not in selected_worlds
-        }
-        if missing_worlds:
-            labels = ", ".join(WORLD_BY_ID[item].label for item in sorted(missing_worlds))
-            raise ValueError(f"Pre vybrané postavy chýbajú svety: {labels}.")
+            for character in [CHARACTER_BY_ID[character_id]]
+            if character.world_id not in selected_worlds
+        )
+        self.worlds = selected_worlds
         return self
 
 

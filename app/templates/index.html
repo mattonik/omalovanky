@@ -30,7 +30,7 @@
           <span class="sparkle sparkle-left" aria-hidden="true">✦</span>
           <h1>Čo dnes vyfarbíme?</h1>
           <span class="sparkle sparkle-right" aria-hidden="true">✦</span>
-          <p>Vyber tému, akciu a papier. Postavy sú voliteľné.</p>
+          <p>Vyber postavy, scénu a papier.</p>
         </div>
 
         <form id="generationForm">
@@ -46,48 +46,46 @@
           </section>
 
           <fieldset class="builder-section">
-            <legend><span>1.</span> Vyber tému</legend>
-            <div class="world-grid">
-              {% for world in catalog.worlds %}
-                <button
-                  class="world-card {% if world.id in ['princesses', 'unicorns'] %}selected{% endif %}"
-                  type="button"
-                  data-world-id="{{ world.id }}"
-                  aria-pressed="{{ 'true' if world.id in ['princesses', 'unicorns'] else 'false' }}"
-                >
-                  <span class="selection-check" aria-hidden="true">✓</span>
-                  <img
-                    src="{{ world.asset }}"
-                    alt=""
-                    width="627"
-                    height="627"
-                  />
-                  <strong>{{ world.label }}</strong>
-                </button>
+            <legend><span>1.</span> Postavy (voliteľné)</legend>
+            <div class="character-themes">
+              {% for theme in catalog.character_themes %}
+                <section class="character-theme">
+                  <h2>{{ theme.label }}</h2>
+                  <div class="character-rail">
+                    {% for character in theme.characters %}
+                      <button
+                        class="character-card"
+                        type="button"
+                        data-character-id="{{ character.id }}"
+                        data-world-id="{{ character.world_id }}"
+                        aria-pressed="false"
+                      >
+                        <span class="selection-check" aria-hidden="true">✓</span>
+                        <span class="character-avatar world-{{ character.world_id }}" aria-hidden="true">
+                          {{ character.icon }}
+                        </span>
+                        <strong>{{ character.label }}</strong>
+                      </button>
+                    {% endfor %}
+                  </div>
+                </section>
               {% endfor %}
             </div>
+            <p class="selection-hint" id="selectionHint">Postavy sú voliteľné. Môžeš vybrať iba scénu.</p>
           </fieldset>
 
           <fieldset class="builder-section">
-            <legend><span>2.</span> Postavy (voliteľné)</legend>
-            <div class="character-rail" id="characterRail">
-              {% for character in catalog.characters %}
-                <button
-                  class="character-card {% if character.id in ['princess', 'unicorn'] %}selected{% endif %}"
-                  type="button"
-                  data-character-id="{{ character.id }}"
-                  data-world-id="{{ character.world_id }}"
-                  aria-pressed="{{ 'true' if character.id in ['princess', 'unicorn'] else 'false' }}"
-                >
+            <legend><span>2.</span> Scéna alebo pozadie (voliteľné)</legend>
+            <div class="scene-grid">
+              {% for scene in catalog.scenes %}
+                <button class="scene-card" type="button" data-scene-id="{{ scene.id }}" aria-pressed="false">
                   <span class="selection-check" aria-hidden="true">✓</span>
-                  <span class="character-avatar world-{{ character.world_id }}" aria-hidden="true">
-                    {{ character.icon }}
-                  </span>
-                  <strong>{{ character.label }}</strong>
+                  <span class="scene-icon" aria-hidden="true">{{ scene.icon }}</span>
+                  <strong>{{ scene.label }}</strong>
                 </button>
               {% endfor %}
             </div>
-            <p class="selection-hint" id="selectionHint">Postavy sú voliteľné. Môžeš nechať len tému.</p>
+            <p class="selection-hint">Ak nič nevyberieš, obrázok bude iba s postavami.</p>
           </fieldset>
 
           <fieldset class="builder-section action-section" id="coloringOptions">
@@ -161,10 +159,10 @@
             <div class="setting-group" id="paperSetting">
               <span class="setting-label">Papier</span>
               <div class="segmented-control" id="orientationControl">
-                <button class="selected" type="button" data-orientation="portrait" aria-pressed="true">
+                <button type="button" data-orientation="portrait" aria-pressed="false">
                   <span aria-hidden="true">▯</span> Na výšku
                 </button>
-                <button type="button" data-orientation="landscape" aria-pressed="false">
+                <button class="selected" type="button" data-orientation="landscape" aria-pressed="true">
                   <span aria-hidden="true">▭</span> Na šírku
                 </button>
               </div>
