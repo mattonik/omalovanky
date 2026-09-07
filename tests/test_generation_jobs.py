@@ -73,7 +73,7 @@ def valid_payload(*, mode: str = "line_art_direct") -> dict:
     }
 
 
-def test_api_rejects_second_active_generation(tmp_path: Path) -> None:
+def test_api_allows_second_generation_to_queue(tmp_path: Path) -> None:
     with TestClient(
         create_app(make_settings(tmp_path), image_provider=FakeImageProvider(), start_worker=False)
     ) as client:
@@ -82,8 +82,8 @@ def test_api_rejects_second_active_generation(tmp_path: Path) -> None:
 
     assert first.status_code == 202
     assert first.json()["status"] == "queued"
-    assert second.status_code == 409
-    assert second.json()["detail"]["code"] == "generation_in_progress"
+    assert second.status_code == 202
+    assert second.json()["status"] == "queued"
 
 
 def test_idle_worker_does_not_exhaust_sqlite_connections(tmp_path: Path) -> None:
@@ -164,6 +164,7 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
     assert status_payload["png_url"] == f"/colorings/{generation_id}.png"
     assert status_payload["pdf_url"] == f"/colorings/{generation_id}.pdf"
     assert status_payload["color_url"] == f"/colorings/{generation_id}/color.png"
+    assert status_payload["color_pdf_url"] == f"/colorings/{generation_id}/color.pdf"
     assert status_payload["pattern_print_url"] == f"/colorings/{generation_id}/print-pattern"
     assert len(provider.generate_calls) == 1
     assert len(provider.edit_calls) == 0

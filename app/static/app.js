@@ -1,5 +1,13 @@
 const catalog = JSON.parse(document.querySelector("#catalogData").textContent);
 
+let savedJobs = [];
+try {
+  savedJobs = JSON.parse(localStorage.getItem("omalovanky.jobs") || "[]");
+  if (!Array.isArray(savedJobs)) savedJobs = [];
+} catch {
+  savedJobs = [];
+}
+
 const state = {
   characters: new Set(),
   scenes: new Set(),
@@ -10,7 +18,8 @@ const state = {
   generationMode: "line_art_direct",
   primaryMode: "line_art",
   current: null,
-  pollTimer: null,
+  jobs: savedJobs.filter((job) => Number.isInteger(job.id) && (job.kind === "comic" || job.kind === "generation")),
+  pollTimers: new Map(),
 };
 
 const elements = {
@@ -36,12 +45,9 @@ const elements = {
   resultImage: document.querySelector("#resultImage"),
   comicPages: document.querySelector("#comicPages"),
   resultSummary: document.querySelector("#resultSummary"),
-  printButton: document.querySelector("#printButton"),
-  patternPrintButton: document.querySelector("#patternPrintButton"),
-  pngButton: document.querySelector("#pngButton"),
-  colorButton: document.querySelector("#colorButton"),
   pdfButton: document.querySelector("#pdfButton"),
-  comicColorPdfButton: document.querySelector("#comicColorPdfButton"),
+  jobsSection: document.querySelector("#jobsSection"),
+  jobsRail: document.querySelector("#jobsRail"),
   renderModeControl: document.querySelector("#renderModeControl"),
   recentSection: document.querySelector("#recentSection"),
   recentRail: document.querySelector("#recentRail"),
@@ -204,28 +210,100 @@ async function createGeneration() {
       const message = data.detail?.message || data.detail || "Generovanie sa nepodarilo spustiť.";
       throw new Error(message);
     }
-    await pollGeneration(data.id, isComic);
-  } catch (error) {
+    trackJob({ id: data.id, kind: isComic ? "comic" : "generation" });
     setLoading(false);
     showBuilder();
-    showError(error.message);
+    elements.status.textContent = "Úloha pridaná do fronty";
+  } catch (error) {
+    handleGenerationError(error);
   }
 }
 
-async function pollGeneration(generationId, isComic = false) {
-  clearTimeout(state.pollTimer);
-  const response = await fetch(isComic ? `/api/comics/${generationId}` : `/api/generations/${generationId}`);
+function trackJob(job) {
+  if (!state.jobs.some((item) => item.id === job.id && item.kind === job.kind)) state.jobs.unshift(job);
+  state.jobs = state.jobs.slice(0, 20);
+  persistJobs();
+  renderJobs();
+  pollJob(job).catch((error) => failJob(job, error));
+}
+
+function persistJobs() {
+  localStorage.setItem("omalovanky.jobs", JSON.stringify(state.jobs.map(({ id, kind }) => ({ id, kind }))));
+}
+
+async function pollJob(job) {
+  const url = job.kind === "comic" ? `/api/comics/${job.id}` : `/api/generations/${job.id}`;
+  const response = await fetch(url);
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail || "Stav generovania sa nepodarilo načítať.");
   if (data.status === "done") {
-    setLoading(false);
-    await showResult(data, isComic);
+    job.data = data;
+    job.status = "done";
+    renderJobs();
     return;
   }
   if (data.status === "failed") {
-    throw new Error(data.error || "Generovanie zlyhalo.");
+    failJob(job, new Error(data.error || "Generovanie zlyhalo."));
+    return;
   }
-  state.pollTimer = setTimeout(() => pollGeneration(generationId, isComic), 1200);
+  job.data = data;
+  job.status = data.status;
+  renderJobs();
+  state.pollTimers.set(`${job.kind}:${job.id}`, setTimeout(() => {
+    pollJob(job).catch((error) => failJob(job, error));
+  }, 1200));
+}
+
+function failJob(job, error) {
+  clearTimeout(state.pollTimers.get(`${job.kind}:${job.id}`));
+  job.status = "failed";
+  job.error = error instanceof Error ? error.message : String(error);
+  renderJobs();
+  showError(job.error);
+}
+
+function handleGenerationError(error) {
+  setLoading(false);
+  showBuilder();
+  showError(error instanceof Error ? error.message : String(error));
+}
+
+function renderJobs() {
+  elements.jobsRail.replaceChildren();
+  elements.jobsSection.hidden = state.jobs.length === 0;
+  state.jobs.forEach((job) => {
+    const card = document.createElement("article");
+    card.className = "job-card";
+    const data = job.data || {};
+    const total = data.total_pages || data.total_steps || 1;
+    const completed = data.completed_pages ?? data.completed_steps ?? 0;
+    const phase = job.status === "done" ? "Hotovo" : job.status === "failed" ? "Nepodarilo sa" :
+      data.phase === "processing" ? "Spracúvame výstup" : data.status === "running" ? "Generujeme" : "Čaká vo fronte";
+    card.innerHTML = `<strong>${job.kind === "comic" ? "Komiksová knižka" : "Omaľovánka"} #${job.id}</strong><span>${phase}</span><small>${completed}/${total}</small>`;
+    if (job.status === "done") {
+      const open = document.createElement("button");
+      open.type = "button";
+      open.textContent = "Otvoriť";
+      open.addEventListener("click", () => openJob(job));
+      card.append(open);
+    } else if (job.status === "failed") {
+      const error = document.createElement("small");
+      error.className = "job-error";
+      error.textContent = job.error;
+      card.append(error);
+    }
+    elements.jobsRail.append(card);
+  });
+}
+
+async function openJob(job) {
+  try {
+    const response = await fetch(job.kind === "comic" ? `/api/comics/${job.id}` : `/api/generations/${job.id}`);
+    if (!response.ok) throw new Error("Výsledok sa nepodarilo načítať.");
+    await showResult(await response.json(), job.kind === "comic");
+  } catch (error) {
+    showError(error.message);
+  }
 }
 
 async function showResult(item, isComic = false) {
@@ -235,28 +313,16 @@ async function showResult(item, isComic = false) {
   elements.status.textContent = isComic ? "Komiksová knižka je hotová" : "Omaľovánka je hotová";
   elements.paperFrame.hidden = isComic;
   elements.comicPages.hidden = !isComic;
-  elements.pngButton.hidden = isComic;
-  elements.colorButton.hidden = isComic || !item.color_url;
-  elements.patternPrintButton.hidden = isComic || !item.pattern_print_url;
-  elements.comicColorPdfButton.hidden = !isComic;
   if (isComic) {
     renderComicPages(item);
-    elements.printButton.href = item.line_art_pdf_url;
-    elements.printButton.textContent = "Vytlačiť omaľovánkovú knižku";
-    elements.pdfButton.href = item.line_art_pdf_url;
-    elements.pdfButton.textContent = "Stiahnuť omaľovánkovú knižku";
-    elements.comicColorPdfButton.href = item.color_pdf_url;
+    elements.pdfButton.href = item.request.primary_mode === "color" ? item.color_pdf_url : item.line_art_pdf_url;
+    elements.pdfButton.textContent = "Stiahnuť PDF knižky";
   } else {
     elements.recentSection.hidden = true;
-    elements.resultImage.src = `${item.png_url}?v=${Date.now()}`;
+    elements.resultImage.src = `${item.request.generation_mode === "color_first" ? (item.color_url || item.png_url) : item.png_url}?v=${Date.now()}`;
     elements.paperFrame.className = `paper-frame ${item.request.orientation}`;
-    elements.printButton.href = item.print_url;
-    elements.printButton.textContent = "Vytlačiť bez vzoru";
-    elements.patternPrintButton.href = item.pattern_print_url || item.print_url;
-    elements.pngButton.href = item.png_url;
-    elements.colorButton.href = item.color_url;
-    elements.pdfButton.href = item.pdf_url;
-    elements.pdfButton.textContent = "Stiahnuť PDF";
+    elements.pdfButton.href = item.request.generation_mode === "color_first" ? (item.color_pdf_url || item.pdf_url) : item.pdf_url;
+    elements.pdfButton.textContent = item.request.generation_mode === "color_first" ? "Stiahnuť farebné PDF" : "Stiahnuť PDF";
   }
 
   const labels = item.request.characters
@@ -296,7 +362,6 @@ function renderComicPages(item) {
 }
 
 function showBuilder() {
-  clearTimeout(state.pollTimer);
   elements.resultView.hidden = true;
   elements.builderView.hidden = false;
   elements.status.textContent = "Pripravené na tvorenie";
@@ -350,6 +415,8 @@ function clearError() {
 syncSelections();
 syncCreationMode();
 loadRecent();
+state.jobs.forEach((job) => pollJob(job).catch((error) => failJob(job, error)));
+renderJobs();
 
 function syncCreationMode() {
   const isComic = state.creationMode === "comic";

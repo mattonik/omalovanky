@@ -9,10 +9,6 @@ from typing import Any
 from .schemas import ComicRequest, GenerationRequest
 
 
-class ActiveGenerationError(RuntimeError):
-    pass
-
-
 class GenerationNotFoundError(RuntimeError):
     pass
 
@@ -65,7 +61,11 @@ class Storage:
                     color_path TEXT,
                     png_path TEXT,
                     pdf_path TEXT,
+                    color_pdf_path TEXT,
                     error TEXT,
+                    phase TEXT NOT NULL DEFAULT 'queued',
+                    completed_steps INTEGER NOT NULL DEFAULT 0,
+                    total_steps INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     started_at TEXT,
                     completed_at TEXT,
@@ -85,6 +85,9 @@ class Storage:
                     color_pdf_path TEXT,
                     line_art_pdf_path TEXT,
                     error TEXT,
+                    phase TEXT NOT NULL DEFAULT 'queued',
+                    completed_pages INTEGER NOT NULL DEFAULT 0,
+                    total_pages INTEGER NOT NULL DEFAULT 6,
                     created_at TEXT NOT NULL,
                     started_at TEXT,
                     completed_at TEXT,
@@ -116,31 +119,29 @@ class Storage:
             }
             if "color_path" not in columns:
                 connection.execute("ALTER TABLE generations ADD COLUMN color_path TEXT")
-
-    def _active_job(self, connection: sqlite3.Connection) -> tuple[str, int] | None:
-        active = connection.execute(
-            "SELECT id FROM generations WHERE status IN ('queued', 'running') LIMIT 1"
-        ).fetchone()
-        if active is not None:
-            return ("Generovanie", int(active["id"]))
-        active = connection.execute(
-            "SELECT id FROM comic_generations WHERE status IN ('queued', 'running') LIMIT 1"
-        ).fetchone()
-        if active is not None:
-            return ("Komiks", int(active["id"]))
-        return None
+            for column, definition in (
+                ("color_pdf_path", "TEXT"),
+                ("phase", "TEXT NOT NULL DEFAULT 'queued'"),
+                ("completed_steps", "INTEGER NOT NULL DEFAULT 0"),
+                ("total_steps", "INTEGER NOT NULL DEFAULT 1"),
+            ):
+                if column not in columns:
+                    connection.execute(f"ALTER TABLE generations ADD COLUMN {column} {definition}")
+            comic_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(comic_generations)").fetchall()
+            }
+            for column, definition in (
+                ("phase", "TEXT NOT NULL DEFAULT 'queued'"),
+                ("completed_pages", "INTEGER NOT NULL DEFAULT 0"),
+                ("total_pages", "INTEGER NOT NULL DEFAULT 6"),
+            ):
+                if column not in comic_columns:
+                    connection.execute(f"ALTER TABLE comic_generations ADD COLUMN {column} {definition}")
 
     def create_generation(self, request: GenerationRequest, prompt: str) -> dict[str, Any]:
         now = utc_now()
         with self._connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            active = self._active_job(connection)
-            if active is not None:
-                connection.rollback()
-                label, active_id = active
-                raise ActiveGenerationError(
-                    f"{label} #{active_id} už prebieha. Počkajte na jeho dokončenie."
-                )
             cursor = connection.execute(
                 """
                 INSERT INTO generations(status, request_json, prompt, created_at, updated_at)
@@ -155,14 +156,6 @@ class Storage:
     def create_comic(self, request: ComicRequest, prompts: list[str]) -> dict[str, Any]:
         now = utc_now()
         with self._connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            active = self._active_job(connection)
-            if active is not None:
-                connection.rollback()
-                label, active_id = active
-                raise ActiveGenerationError(
-                    f"{label} #{active_id} už prebieha. Počkajte na jeho dokončenie."
-                )
             cursor = connection.execute(
                 """
                 INSERT INTO comic_generations(status, request_json, prompt_json, created_at, updated_at)
@@ -180,6 +173,20 @@ class Storage:
             )
             connection.commit()
         return self.get_comic(comic_id)
+
+    def set_generation_phase(self, generation_id: int, phase: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE generations SET phase = ?, updated_at = ? WHERE id = ?",
+                (phase, utc_now(), generation_id),
+            )
+
+    def set_comic_phase(self, comic_id: int, phase: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE comic_generations SET phase = ?, updated_at = ? WHERE id = ?",
+                (phase, utc_now(), comic_id),
+            )
 
     def get_generation(self, generation_id: int) -> dict[str, Any]:
         with self._connect() as connection:
@@ -205,7 +212,7 @@ class Storage:
             connection.execute(
                 """
                 UPDATE generations
-                SET status = 'running', started_at = ?, updated_at = ?, error = NULL
+                SET status = 'running', phase = 'generating', started_at = ?, updated_at = ?, error = NULL
                 WHERE id = ? AND status = 'queued'
                 """,
                 (now, now, generation_id),
@@ -227,7 +234,7 @@ class Storage:
             connection.execute(
                 """
                 UPDATE comic_generations
-                SET status = 'running', started_at = ?, updated_at = ?, error = NULL
+                SET status = 'running', phase = 'generating', started_at = ?, updated_at = ?, error = NULL
                 WHERE id = ? AND status = 'queued'
                 """,
                 (now, now, comic_id),
@@ -244,6 +251,7 @@ class Storage:
         provider_request_id: str | None,
         png_path: str | None = None,
         pdf_path: str | None = None,
+        color_pdf_path: str | None = None,
     ) -> None:
         now = utc_now()
         with self._connect() as connection:
@@ -251,7 +259,8 @@ class Storage:
                 """
                 UPDATE generations
                 SET status = 'done', source_path = ?, color_path = ?, provider_request_id = ?,
-                    png_path = ?, pdf_path = ?, completed_at = ?, updated_at = ?, error = NULL
+                    png_path = ?, pdf_path = ?, color_pdf_path = ?, phase = 'done',
+                    completed_steps = total_steps, completed_at = ?, updated_at = ?, error = NULL
                 WHERE id = ?
                 """,
                 (
@@ -260,6 +269,7 @@ class Storage:
                     provider_request_id,
                     png_path,
                     pdf_path,
+                    color_pdf_path,
                     now,
                     now,
                     generation_id,
@@ -272,7 +282,7 @@ class Storage:
             connection.execute(
                 """
                 UPDATE generations
-                SET status = 'failed', error = ?, completed_at = ?, updated_at = ?
+                SET status = 'failed', phase = 'failed', error = ?, completed_at = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (error[:2000], now, now, generation_id),
@@ -297,6 +307,17 @@ class Storage:
                 """,
                 (provider_request_id, color_path, line_art_path, now, comic_id, page_number),
             )
+            connection.execute(
+                """
+                UPDATE comic_generations
+                SET completed_pages = (
+                    SELECT COUNT(*) FROM comic_pages
+                    WHERE comic_id = ? AND color_path IS NOT NULL AND line_art_path IS NOT NULL
+                ), phase = 'generating', updated_at = ?
+                WHERE id = ?
+                """,
+                (comic_id, now, comic_id),
+            )
 
     def mark_comic_done(
         self,
@@ -311,6 +332,7 @@ class Storage:
                 """
                 UPDATE comic_generations
                 SET status = 'done', color_pdf_path = ?, line_art_pdf_path = ?,
+                    phase = 'done', completed_pages = total_pages,
                     completed_at = ?, updated_at = ?, error = NULL
                 WHERE id = ?
                 """,
@@ -323,7 +345,7 @@ class Storage:
             connection.execute(
                 """
                 UPDATE comic_generations
-                SET status = 'failed', error = ?, completed_at = ?, updated_at = ?
+                SET status = 'failed', phase = 'failed', error = ?, completed_at = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (error[:2000], now, now, comic_id),
@@ -335,7 +357,7 @@ class Storage:
             cursor = connection.execute(
                 """
                 UPDATE generations
-                SET status = 'queued', started_at = NULL, updated_at = ?,
+                SET status = 'queued', phase = 'queued', started_at = NULL, updated_at = ?,
                     error = 'Úloha bola obnovená po reštarte aplikácie.'
                 WHERE status = 'running'
                 """,
@@ -345,7 +367,7 @@ class Storage:
             cursor = connection.execute(
                 """
                 UPDATE comic_generations
-                SET status = 'queued', started_at = NULL, updated_at = ?,
+                SET status = 'queued', phase = 'queued', started_at = NULL, updated_at = ?,
                     error = 'Úloha bola obnovená po reštarte aplikácie.'
                 WHERE status = 'running'
                 """,

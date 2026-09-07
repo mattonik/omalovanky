@@ -22,6 +22,7 @@ COMIC_PAGE_COUNT = 6
 class ProcessedFiles:
     png_path: Path
     pdf_path: Path
+    color_pdf_path: Path
 
 
 class ColoringProcessor:
@@ -36,6 +37,7 @@ class ColoringProcessor:
         output_dir.mkdir(parents=True, exist_ok=True)
         png_path = output_dir / f"{generation_id}.png"
         pdf_path = output_dir / f"{generation_id}.pdf"
+        color_pdf_path = output_dir / f"{generation_id}-color.pdf"
         page_size = A4_300_DPI[orientation]
         margin = 140
 
@@ -50,8 +52,9 @@ class ColoringProcessor:
             page.paste(line_art, (x, y))
             page.save(png_path, format="PNG", optimize=True, dpi=(300, 300))
 
+        self._create_pdf(png_path=source_path, pdf_path=color_pdf_path, orientation=orientation)
         self._create_pdf(png_path=png_path, pdf_path=pdf_path, orientation=orientation)
-        return ProcessedFiles(png_path=png_path, pdf_path=pdf_path)
+        return ProcessedFiles(png_path=png_path, pdf_path=pdf_path, color_pdf_path=color_pdf_path)
 
     @staticmethod
     def _create_pdf(*, png_path: Path, pdf_path: Path, orientation: Orientation) -> None:

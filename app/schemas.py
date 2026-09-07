@@ -81,8 +81,12 @@ class GenerationStatus(BaseModel):
     status: Literal["queued", "running", "done", "failed"]
     request: GenerationRequest
     error: str | None = None
+    phase: Literal["queued", "generating", "processing", "done", "failed"] = "queued"
+    completed_steps: int = 0
+    total_steps: int = 1
     png_url: str | None = None
     pdf_url: str | None = None
+    color_pdf_url: str | None = None
     color_url: str | None = None
     print_url: str | None = None
     pattern_print_url: str | None = None
@@ -155,6 +159,9 @@ class ComicStatus(BaseModel):
     status: Literal["queued", "running", "done", "failed"]
     request: ComicRequest
     error: str | None = None
+    phase: Literal["queued", "generating", "processing", "done", "failed"] = "queued"
+    completed_pages: int = 0
+    total_pages: int = 6
     pages: list[ComicPageStatus] = Field(default_factory=list)
     color_pdf_url: str | None = None
     line_art_pdf_url: str | None = None

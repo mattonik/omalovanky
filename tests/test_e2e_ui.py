@@ -96,19 +96,17 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
         page.get_by_label("Vlastný nápad").fill("Bleskový McQueen a Mater pretekajú spolu")
         page.get_by_role("button", name="Vytvoriť omaľovánku").click()
 
+        page.get_by_text("Omaľovánka #1").wait_for(timeout=5_000)
+        page.get_by_role("button", name="Otvoriť").click()
         page.get_by_role("heading", name="Hotovo! Môžeme vyfarbovať.").wait_for(timeout=10_000)
         page.locator("#resultImage").wait_for(state="visible")
         page.locator("#resultImage").evaluate(
             "(image) => image.complete && image.naturalWidth > 0"
         )
 
-        assert page.get_by_role("link", name="Vytlačiť bez vzoru").is_visible()
-        assert page.get_by_role("link", name="Vytlačiť so vzorom").is_visible()
-        assert page.get_by_role("link", name="Stiahnuť PNG").get_attribute("href").endswith(".png")
-        assert page.get_by_role("link", name="Stiahnuť farebnú verziu").get_attribute("href").endswith(
-            "/color.png"
+        assert page.get_by_role("link", name="Stiahnuť farebné PDF").get_attribute("href").endswith(
+            "/color.pdf"
         )
-        assert page.get_by_role("link", name="Stiahnuť PDF").get_attribute("href").endswith(".pdf")
         assert page.locator('#renderModeControl [data-generation-mode="color_first"]').get_attribute(
             "aria-pressed"
         ) == "true"
@@ -136,4 +134,46 @@ def test_mobile_builder_has_no_horizontal_overflow(live_app: str) -> None:
 
         assert has_overflow is False
         assert page.get_by_role("button", name="Bleskový McQueen").get_attribute("aria-pressed") == "true"
+        browser.close()
+
+
+def test_generation_failure_returns_to_builder_without_unhandled_rejection(live_app: str) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 1100, "height": 800})
+        console_errors: list[str] = []
+        page.on(
+            "console",
+            lambda message: console_errors.append(message.text)
+            if message.type == "error"
+            else None,
+        )
+        poll_count = 0
+
+        def mock_generation(route) -> None:
+            nonlocal poll_count
+            if route.request.method == "POST":
+                route.fulfill(status=202, content_type="application/json", body='{"id": 99, "status": "queued"}')
+                return
+            poll_count += 1
+            if poll_count == 1:
+                route.fulfill(status=200, content_type="application/json", body='{"id": 99, "status": "queued"}')
+            else:
+                route.fulfill(
+                    status=200,
+                    content_type="application/json",
+                    body='{"id": 99, "status": "failed", "error": "Toto zadanie generátor odmietol. Skúste scénu opísať jednoduchšie."}',
+                )
+
+        page.route("**/api/generations", mock_generation)
+        page.route("**/api/generations/**", mock_generation)
+        page.goto(live_app, wait_until="networkidle")
+        page.get_by_role("button", name="Bleskový McQueen").click()
+        page.get_by_role("button", name="Vytvoriť omaľovánku").click()
+
+        page.locator("#formError").wait_for(state="visible", timeout=5000)
+        assert "generátor odmietol" in page.locator("#formError").inner_text()
+        assert page.locator("#loadingOverlay").is_hidden()
+        assert page.locator("#builderView").is_visible()
+        assert not any("Unhandled Promise" in error for error in console_errors)
         browser.close()

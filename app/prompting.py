@@ -63,7 +63,7 @@ COMIC_STORY_TYPES = {
 
 
 def build_image_prompt(request: GenerationRequest) -> str:
-    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
     if not worlds:
         world_text = "none selected"
     elif len(worlds) == 1:
@@ -138,7 +138,7 @@ Art requirements:
 
 
 def build_color_preview_prompt(request: GenerationRequest) -> str:
-    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
     if not worlds:
         world_text = "none selected"
     elif len(worlds) == 1:
@@ -189,7 +189,7 @@ Art requirements:
 
 
 def build_line_art_edit_prompt(request: GenerationRequest) -> str:
-    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
     if not worlds:
         world_text = "none selected"
     elif len(worlds) == 1:
@@ -230,7 +230,7 @@ Art requirements:
 
 
 def build_comic_page_prompts(request: ComicRequest) -> list[str]:
-    worlds = [WORLD_BY_ID[item].label for item in request.worlds]
+    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
     if not worlds:
         world_text = "none selected"
     elif len(worlds) == 1:

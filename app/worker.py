@@ -82,6 +82,7 @@ class GenerationWorker:
             else:
                 color_path = None
 
+            self.storage.set_generation_phase(generation_id, "processing")
             try:
                 processed = self.processor.process(
                     generation_id=generation_id,
@@ -111,6 +112,7 @@ class GenerationWorker:
                 provider_request_id=provider_request_id,
                 png_path=str(processed.png_path),
                 pdf_path=str(processed.pdf_path),
+                color_pdf_path=str(processed.color_pdf_path),
             )
         except Exception as exc:  # noqa: BLE001
             self.storage.mark_generation_failed(generation_id, self._friendly_error(exc))
@@ -119,6 +121,7 @@ class GenerationWorker:
     def _process_comic(self, comic: dict) -> bool:
         comic_id = int(comic["id"])
         try:
+            self.storage.set_comic_phase(comic_id, "processing")
             comic_dir = self.colorings_dir / f"comic-{comic_id}"
             comic_dir.mkdir(parents=True, exist_ok=True)
             color_paths: list[Path] = []

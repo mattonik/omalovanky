@@ -10,6 +10,7 @@ class World:
     icon: str
     color: str
     asset: str
+    prompt_name: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,72 +39,73 @@ class Scene:
 
 
 WORLDS = (
-    World("princesses", "Princezné", "👸", "violet", "/static/assets/world-princesses.png"),
-    World("unicorns", "Jednorožce", "🦄", "pink", "/static/assets/world-unicorns.png"),
-    World("rescue-pups", "Labková patrola", "🐾", "blue", "/static/assets/world-rescue-pups.png"),
-    World("cars", "Autá", "🏎️", "coral", "/static/assets/world-cars.png"),
+    World("princesses", "Princezné", "👸", "violet", "/static/assets/world-princesses.png", "an original fairy-tale world"),
+    World("unicorns", "Jednorožce", "🦄", "pink", "/static/assets/world-unicorns.png", "an original magical-animal world"),
+    World("rescue-pups", "Labková patrola", "🐾", "blue", "/static/assets/world-rescue-pups.png", "an original friendly rescue-team world"),
+    World("cars", "Autá", "🏎️", "coral", "/static/assets/world-cars.png", "an original cartoon racing world"),
     World(
         "kpop-demon-hunters",
         "K-pop Demon Hunters",
         "🎤",
         "magenta",
         "/static/assets/world-kpop-demon-hunters.svg",
+        "an original pop-star adventure world",
     ),
 )
 
 CHARACTERS = (
-    Character("princess", "Princezná", "a cheerful young fairy-tale princess", "princesses", "👸"),
-    Character("unicorn", "Jednorožec", "a friendly magical unicorn", "unicorns", "🦄"),
-    Character("zuma", "Zuma", "Zuma from PAW Patrol", "rescue-pups", "🛟"),
-    Character("rocky", "Rocky", "Rocky from PAW Patrol", "rescue-pups", "♻️"),
-    Character("skye", "Skye", "Skye from PAW Patrol", "rescue-pups", "🚁"),
-    Character("chase", "Chase", "Chase from PAW Patrol", "rescue-pups", "⭐"),
-    Character("marshall", "Marshall", "Marshall from PAW Patrol", "rescue-pups", "🚒"),
-    Character("rubble", "Rubble", "Rubble from PAW Patrol", "rescue-pups", "🚧"),
+    Character("princess", "Princezná", "an original cheerful fairy-tale child character", "princesses", "👸"),
+    Character("unicorn", "Jednorožec", "an original friendly magical unicorn", "unicorns", "🦄"),
+    Character("zuma", "Zuma", "an original orange rescue puppy", "rescue-pups", "🛟"),
+    Character("rocky", "Rocky", "an original green recycling puppy", "rescue-pups", "♻️"),
+    Character("skye", "Skye", "an original pink flying puppy", "rescue-pups", "🚁"),
+    Character("chase", "Chase", "an original blue police puppy", "rescue-pups", "⭐"),
+    Character("marshall", "Marshall", "an original red firefighter puppy", "rescue-pups", "🚒"),
+    Character("rubble", "Rubble", "an original yellow builder puppy", "rescue-pups", "🚧"),
     Character(
         "mighty-pups",
         "Mighty Pups",
-        "the selected PAW Patrol pups in their recognizable Mighty Pups superhero variant",
+        "the selected original rescue puppies in a bright superhero variant",
         "rescue-pups",
         "⚡",
     ),
     Character(
         "lightning-mcqueen",
         "Bleskový McQueen",
-        "Lightning McQueen from Disney Pixar Cars",
+        "an original bright red cartoon race car with expressive eyes",
         "cars",
         "🏁",
     ),
     Character(
         "mater",
         "Mater / Burák",
-        "Mater, the rusty tow truck from Disney Pixar Cars",
+        "an original friendly rusty tow truck with expressive eyes",
         "cars",
         "🪝",
     ),
-    Character("sally", "Sally", "Sally Carrera from Disney Pixar Cars", "cars", "💙"),
+    Character("sally", "Sally", "an original blue cartoon sports car with expressive eyes", "cars", "💙"),
     Character(
         "cruz-ramirez",
         "Cruz Ramirez",
-        "Cruz Ramirez from Disney Pixar Cars",
+        "an original yellow cartoon race car with expressive eyes",
         "cars",
         "💛",
     ),
     Character(
         "jackson-storm",
         "Jackson Storm",
-        "Jackson Storm from Disney Pixar Cars",
+        "an original dark futuristic cartoon race car with expressive eyes",
         "cars",
         "🌩️",
     ),
-    Character("mack", "Mack", "Mack the transporter truck from Disney Pixar Cars", "cars", "🚛"),
-    Character("rumi", "Rumi", "Rumi, the lead singer and demon hunter from KPop Demon Hunters", "kpop-demon-hunters", "🎤"),
-    Character("mira", "Mira", "Mira, the confident performer from KPop Demon Hunters", "kpop-demon-hunters", "✨"),
-    Character("zoey", "Zoey", "Zoey, the bright and playful performer from KPop Demon Hunters", "kpop-demon-hunters", "🌙"),
+    Character("mack", "Mack", "an original large cartoon transporter truck with expressive eyes", "cars", "🚛"),
+    Character("rumi", "Rumi", "an original confident young pop singer and adventurer", "kpop-demon-hunters", "🎤"),
+    Character("mira", "Mira", "an original stylish young pop singer and adventurer", "kpop-demon-hunters", "✨"),
+    Character("zoey", "Zoey", "an original bright playful young pop singer and adventurer", "kpop-demon-hunters", "🌙"),
     Character(
         "huntrix",
         "HUNTR/X",
-        "the HUNTR/X trio Rumi, Mira, and Zoey together from KPop Demon Hunters",
+        "three original young pop singers and adventurers together",
         "kpop-demon-hunters",
         "🎶",
     ),

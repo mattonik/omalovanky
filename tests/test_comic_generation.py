@@ -109,7 +109,7 @@ def test_comic_api_flow_and_downloads(tmp_path: Path) -> None:
     assert recent.json()[0]["id"] == comic_id
 
 
-def test_comic_rejects_second_active_job(tmp_path: Path) -> None:
+def test_comic_allows_next_job_to_queue(tmp_path: Path) -> None:
     with TestClient(
         create_app(make_settings(tmp_path), image_provider=ComicProvider(), start_worker=False)
     ) as client:
@@ -122,7 +122,7 @@ def test_comic_rejects_second_active_job(tmp_path: Path) -> None:
         })
 
     assert first.status_code == 202
-    assert second.status_code == 409
+    assert second.status_code == 202
 
 
 def test_comic_processor_requires_exactly_six_pages(tmp_path: Path) -> None:

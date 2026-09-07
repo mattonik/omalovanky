@@ -45,8 +45,8 @@ def test_princess_on_unicorn_prompt_is_simple_and_printable() -> None:
 
     prompt = build_image_prompt(request)
 
-    assert "fairy-tale princess" in prompt
-    assert "magical unicorn" in prompt
+    assert "original cheerful fairy-tale child character" in prompt
+    assert "original friendly magical unicorn" in prompt
     assert "dúhový most" in prompt
     assert "thick, smooth, consistent outlines" in prompt
     assert "no color, gray, shading" in prompt
@@ -63,14 +63,14 @@ def test_three_pups_and_mighty_variant_are_supported() -> None:
 
     prompt = build_image_prompt(request)
 
-    assert "Zuma from PAW Patrol" in prompt
-    assert "Rocky from PAW Patrol" in prompt
-    assert "Skye from PAW Patrol" in prompt
-    assert "Mighty Pups superhero variant" in prompt
+    assert "original orange rescue puppy" in prompt
+    assert "original green recycling puppy" in prompt
+    assert "original pink flying puppy" in prompt
+    assert "bright superhero variant" in prompt
     assert "left to right" in prompt
 
 
-def test_mcqueen_and_mater_prompt_uses_recognizable_names() -> None:
+def test_cars_prompt_uses_generic_original_descriptions() -> None:
     request = GenerationRequest(
         worlds=["cars"],
         characters=["lightning-mcqueen", "mater"],
@@ -80,12 +80,12 @@ def test_mcqueen_and_mater_prompt_uses_recognizable_names() -> None:
 
     prompt = build_image_prompt(request)
 
-    assert "Lightning McQueen" in prompt
-    assert "Mater, the rusty tow truck" in prompt
+    assert "original bright red cartoon race car" in prompt
+    assert "original friendly rusty tow truck" in prompt
     assert "signature silhouette" in prompt
 
 
-def test_kpop_demon_hunters_prompt_mentions_new_world_and_group() -> None:
+def test_prompt_avoids_brand_names() -> None:
     request = GenerationRequest(
         worlds=["kpop-demon-hunters"],
         characters=["rumi", "mira", "zoey", "huntrix"],
@@ -95,11 +95,9 @@ def test_kpop_demon_hunters_prompt_mentions_new_world_and_group() -> None:
 
     prompt = build_image_prompt(request)
 
-    assert "K-pop Demon Hunters" in prompt
-    assert "Rumi" in prompt
-    assert "Mira" in prompt
-    assert "Zoey" in prompt
-    assert "HUNTR/X" in prompt
+    assert "original pop-star adventure world" in prompt
+    assert "original confident young pop singer" in prompt
+    assert not any(name in prompt for name in ("PAW Patrol", "Lightning McQueen", "K-pop Demon Hunters", "Disney", "Pixar"))
 
 
 def test_character_selection_derives_its_theme() -> None:
@@ -112,8 +110,8 @@ def test_character_selection_derives_its_theme() -> None:
 
     assert request.worlds == ["unicorns"]
     assert "magical unicorn" in prompt
-    assert "Jednorožce" in prompt
-    assert "fairy-tale princess" not in prompt
+    assert "original magical-animal world" in prompt
+    assert "Worlds: an original fairy-tale world" not in prompt
 
 
 def test_generation_defaults_to_landscape_without_background() -> None:
@@ -137,8 +135,8 @@ def test_color_preview_prompt_requests_full_color_reference() -> None:
     prompt = build_color_preview_prompt(request)
 
     assert "full-color children's reference illustration" in prompt
-    assert "Lightning McQueen" in prompt
-    assert "Mater, the rusty tow truck" in prompt
+    assert "original bright red cartoon race car" in prompt
+    assert "original friendly rusty tow truck" in prompt
 
 
 @pytest.mark.parametrize(

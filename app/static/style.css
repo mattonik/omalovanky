@@ -802,6 +802,44 @@ fieldset {
   gap: 16px;
 }
 
+.jobs-section {
+  margin: 0 auto 28px;
+  max-width: 1080px;
+}
+
+.jobs-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.jobs-heading h2 { margin: 0; font-size: 20px; }
+.jobs-heading span { color: #66738e; font-size: 13px; }
+.jobs-rail { display: grid; gap: 8px; }
+.job-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e2e6f0;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+.job-card span, .job-card small { color: #66738e; }
+.job-card button { color: var(--violet); font-weight: 800; }
+.job-error { color: #b43b3b !important; }
+
+@media (max-width: 620px) {
+  .jobs-heading { display: block; }
+  .job-card { grid-template-columns: 1fr auto; }
+  .job-card span { grid-column: 1; }
+  .job-card small { grid-column: 1; }
+  .job-card button { grid-column: 2; grid-row: 1 / span 3; }
+}
+
 .result-button {
   min-height: 78px;
   padding: 0 25px;

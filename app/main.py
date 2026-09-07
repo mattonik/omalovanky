@@ -15,7 +15,7 @@ from .image_provider import ImageProvider, OpenAIImageProvider
 from .image_processing import COMIC_PAGE_COUNT
 from .prompting import build_color_preview_prompt, build_comic_page_prompts, build_image_prompt
 from .schemas import ComicPageStatus, ComicRequest, ComicStatus, GenerationRequest, GenerationStatus
-from .storage import ActiveGenerationError, ComicNotFoundError, GenerationNotFoundError, Storage
+from .storage import ComicNotFoundError, GenerationNotFoundError, Storage
 from .worker import GenerationWorker
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -90,13 +90,7 @@ def create_app(
             if payload.generation_mode == "color_first"
             else build_image_prompt(payload)
         )
-        try:
-            item = storage.create_generation(payload, prompt)
-        except ActiveGenerationError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={"code": "generation_in_progress", "message": str(exc)},
-            ) from exc
+        item = storage.create_generation(payload, prompt)
         worker.wake()
         return serialize_generation(item)
 
@@ -107,13 +101,7 @@ def create_app(
     )
     def create_comic(payload: ComicRequest):
         prompts = build_comic_page_prompts(payload)
-        try:
-            item = storage.create_comic(payload, prompts)
-        except ActiveGenerationError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={"code": "generation_in_progress", "message": str(exc)},
-            ) from exc
+        item = storage.create_comic(payload, prompts)
         worker.wake()
         return serialize_comic(item)
 
@@ -159,6 +147,13 @@ def create_app(
     def download_pdf(generation_id: int):
         item = require_completed_generation(storage, generation_id)
         return serve_file(item["pdf_path"], "application/pdf", f"omalovanka-{generation_id}.pdf")
+
+    @app.get("/colorings/{generation_id}/color.pdf")
+    def download_color_pdf(generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        if not item["color_pdf_path"]:
+            raise HTTPException(status_code=404, detail="Farebný PDF súbor nie je k dispozícii.")
+        return serve_file(item["color_pdf_path"], "application/pdf", f"omalovanka-{generation_id}-farebna.pdf")
 
     @app.get("/comics/{comic_id}/color.pdf")
     def download_comic_color_pdf(comic_id: int):
@@ -252,8 +247,12 @@ def serialize_generation(item: dict) -> GenerationStatus:
         status=item["status"],
         request=GenerationRequest.model_validate(item["request"]),
         error=item["error"],
+        phase=item["phase"],
+        completed_steps=item["completed_steps"],
+        total_steps=item["total_steps"],
         png_url=f"/colorings/{generation_id}.png" if done and item["png_path"] else None,
         pdf_url=f"/colorings/{generation_id}.pdf" if done and item["pdf_path"] else None,
+        color_pdf_url=f"/colorings/{generation_id}/color.pdf" if done and item["color_pdf_path"] else None,
         color_url=f"/colorings/{generation_id}/color.png" if done and item["color_path"] else None,
         print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
         pattern_print_url=f"/colorings/{generation_id}/print-pattern"
@@ -284,6 +283,9 @@ def serialize_comic(item: dict) -> ComicStatus:
         status=item["status"],
         request=ComicRequest.model_validate(item["request"]),
         error=item["error"],
+        phase=item["phase"],
+        completed_pages=item["completed_pages"],
+        total_pages=item["total_pages"],
         pages=pages,
         color_pdf_url=f"/comics/{comic_id}/color.pdf" if done and item["color_pdf_path"] else None,
         line_art_pdf_url=f"/comics/{comic_id}/line-art.pdf"
