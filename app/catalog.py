@@ -54,58 +54,58 @@ WORLDS = (
 )
 
 CHARACTERS = (
-    Character("princess", "Princezná", "an original cheerful fairy-tale child character", "princesses", "👸"),
+    Character("princess", "Princezná", "an original cheerful young princess wearing a small crown and a princess dress", "princesses", "👸"),
     Character("unicorn", "Jednorožec", "an original friendly magical unicorn", "unicorns", "🦄"),
-    Character("zuma", "Zuma", "an original orange rescue puppy", "rescue-pups", "🛟"),
-    Character("rocky", "Rocky", "an original green recycling puppy", "rescue-pups", "♻️"),
-    Character("skye", "Skye", "an original pink flying puppy", "rescue-pups", "🚁"),
-    Character("chase", "Chase", "an original blue police puppy", "rescue-pups", "⭐"),
-    Character("marshall", "Marshall", "an original red firefighter puppy", "rescue-pups", "🚒"),
-    Character("rubble", "Rubble", "an original yellow builder puppy", "rescue-pups", "🚧"),
+    Character("zuma", "Zuma", "Zuma from PAW Patrol", "rescue-pups", "🛟"),
+    Character("rocky", "Rocky", "Rocky from PAW Patrol", "rescue-pups", "♻️"),
+    Character("skye", "Skye", "Skye from PAW Patrol", "rescue-pups", "🚁"),
+    Character("chase", "Chase", "Chase from PAW Patrol", "rescue-pups", "⭐"),
+    Character("marshall", "Marshall", "Marshall from PAW Patrol", "rescue-pups", "🚒"),
+    Character("rubble", "Rubble", "Rubble from PAW Patrol", "rescue-pups", "🚧"),
     Character(
         "mighty-pups",
         "Mighty Pups",
-        "the selected original rescue puppies in a bright superhero variant",
+        "Mighty Pups from PAW Patrol",
         "rescue-pups",
         "⚡",
     ),
     Character(
         "lightning-mcqueen",
         "Bleskový McQueen",
-        "an original bright red cartoon race car with expressive eyes",
+        "Lightning McQueen from Cars",
         "cars",
         "🏁",
     ),
     Character(
         "mater",
         "Mater / Burák",
-        "an original friendly rusty tow truck with expressive eyes",
+        "Mater from Cars",
         "cars",
         "🪝",
     ),
-    Character("sally", "Sally", "an original blue cartoon sports car with expressive eyes", "cars", "💙"),
+    Character("sally", "Sally", "Sally from Cars", "cars", "💙"),
     Character(
         "cruz-ramirez",
         "Cruz Ramirez",
-        "an original yellow cartoon race car with expressive eyes",
+        "Cruz Ramirez from Cars",
         "cars",
         "💛",
     ),
     Character(
         "jackson-storm",
         "Jackson Storm",
-        "an original dark futuristic cartoon race car with expressive eyes",
+        "Jackson Storm from Cars",
         "cars",
         "🌩️",
     ),
-    Character("mack", "Mack", "an original large cartoon transporter truck with expressive eyes", "cars", "🚛"),
-    Character("rumi", "Rumi", "an original confident young pop singer and adventurer", "kpop-demon-hunters", "🎤"),
-    Character("mira", "Mira", "an original stylish young pop singer and adventurer", "kpop-demon-hunters", "✨"),
-    Character("zoey", "Zoey", "an original bright playful young pop singer and adventurer", "kpop-demon-hunters", "🌙"),
+    Character("mack", "Mack", "Mack from Cars", "cars", "🚛"),
+    Character("rumi", "Rumi", "Rumi from KPop Demon Hunters", "kpop-demon-hunters", "🎤"),
+    Character("mira", "Mira", "Mira from KPop Demon Hunters", "kpop-demon-hunters", "✨"),
+    Character("zoey", "Zoey", "Zoey from KPop Demon Hunters", "kpop-demon-hunters", "🌙"),
     Character(
         "huntrix",
         "HUNTR/X",
-        "three original young pop singers and adventurers together",
+        "HUNTR/X from KPop Demon Hunters",
         "kpop-demon-hunters",
         "🎶",
     ),
@@ -127,6 +127,11 @@ SCENES = (
 )
 
 ACTIONS = (
+    Action("playing", "Hrajú sa", "playing happily together", "⚽"),
+    Action("exploring", "Objavujú", "exploring together with curiosity", "🔎"),
+    Action("building", "Stavajú", "building something together", "🧱"),
+    Action("dancing", "Tancujú", "dancing happily together", "🎵"),
+    Action("resting", "Oddychujú", "resting peacefully together", "☀️"),
     Action("riding", "Jazdia", "riding together on a gentle adventure", "🦄"),
     Action("rescuing", "Zachraňujú", "performing a friendly rescue together", "🛡️"),
     Action("racing", "Pretekajú", "taking part in a cheerful, safe race", "🏁"),
@@ -134,6 +139,17 @@ ACTIONS = (
 
 WORLD_BY_ID = {item.id: item for item in WORLDS}
 CHARACTER_BY_ID = {item.id: item for item in CHARACTERS}
+GENERIC_CHARACTERS = {
+    "zuma": "an orange rescue puppy", "rocky": "a green recycling puppy",
+    "skye": "a pink flying rescue puppy", "chase": "a blue police puppy",
+    "marshall": "a red firefighter puppy", "rubble": "a yellow builder puppy",
+    "mighty-pups": "a team of superhero rescue puppies",
+    "lightning-mcqueen": "a red cartoon race car", "mater": "a friendly rusty tow truck",
+    "sally": "a blue cartoon sports car", "cruz-ramirez": "a yellow cartoon race car",
+    "jackson-storm": "a dark futuristic race car", "mack": "a large transporter truck",
+    "rumi": "a confident young pop singer", "mira": "a stylish young pop singer",
+    "zoey": "a playful young pop singer", "huntrix": "a group of three young pop singers",
+}
 ACTION_BY_ID = {item.id: item for item in ACTIONS}
 SCENE_BY_ID = {item.id: item for item in SCENES}
 

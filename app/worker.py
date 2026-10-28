@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
+from PIL import Image
 
 from .image_provider import ImageProvider
 from .image_processing import ColoringProcessor, ComicProcessor
-from .prompting import build_color_preview_prompt, build_image_prompt, build_line_art_edit_prompt
+from .prompting import build_color_preview_prompt, build_image_prompt, build_line_art_edit_prompt, generation_page_prompts
 from .schemas import GenerationRequest
 from .storage import Storage
 
@@ -71,48 +72,50 @@ class GenerationWorker:
                 else build_image_prompt(request)
             )
             self.colorings_dir.mkdir(parents=True, exist_ok=True)
+            line_paths, color_paths = [], []
+            page_prompts = generation_page_prompts(request, source_prompt)
+            provider_request_id = job.get("provider_request_id")
+            for page_number in range(1, request.page_count + 1):
+                prefix = str(generation_id) if page_number == 1 else f"{generation_id}-page-{page_number}"
+                source_path = self.colorings_dir / f"{prefix}-source.png"
+                color_path = self.colorings_dir / f"{prefix}-color.png"
+                try:
+                    with Image.open(source_path) as saved:
+                        saved.verify()
+                except (OSError, ValueError):
+                    self.storage.set_generation_phase(generation_id, "generating")
+                    generated = self.image_provider.generate(page_prompts[page_number - 1], request.orientation)
+                    source_path.write_bytes(generated.content)
+                    provider_request_id = generated.request_id or provider_request_id
+                if request.generation_mode == "color_first":
+                    color_path.write_bytes(source_path.read_bytes())
+                    color_paths.append(color_path)
+                self.storage.set_generation_phase(generation_id, "processing")
+                try:
+                    processed = self.processor.process(generation_id=prefix, source_path=source_path, output_dir=self.colorings_dir, orientation=request.orientation)
+                except Exception:
+                    edited_source_path = self.colorings_dir / f"{prefix}-fallback-lineart.png"
+                    edited = self.image_provider.edit(source_path=source_path, prompt=build_line_art_edit_prompt(request), orientation=request.orientation)
+                    edited_source_path.write_bytes(edited.content)
+                    provider_request_id = edited.request_id or provider_request_id
+                    processed = self.processor.process(generation_id=prefix, source_path=edited_source_path, output_dir=self.colorings_dir, orientation=request.orientation)
+                line_paths.append(processed.png_path)
+                self.storage.set_generation_progress(generation_id, page_number)
             source_path = self.colorings_dir / f"{generation_id}-source.png"
-            color_path = self.colorings_dir / f"{generation_id}-color.png"
-
-            generated = self.image_provider.generate(source_prompt, request.orientation)
-            source_path.write_bytes(generated.content)
-            provider_request_id = generated.request_id
-            if request.generation_mode == "color_first":
-                color_path.write_bytes(generated.content)
-            else:
-                color_path = None
-
-            self.storage.set_generation_phase(generation_id, "processing")
-            try:
-                processed = self.processor.process(
-                    generation_id=generation_id,
-                    source_path=source_path,
-                    output_dir=self.colorings_dir,
-                    orientation=request.orientation,
-                )
-            except Exception:
-                edited_source_path = self.colorings_dir / f"{generation_id}-fallback-lineart.png"
-                edited = self.image_provider.edit(
-                    source_path=source_path,
-                    prompt=build_line_art_edit_prompt(request),
-                    orientation=request.orientation,
-                )
-                edited_source_path.write_bytes(edited.content)
-                provider_request_id = edited.request_id or provider_request_id
-                processed = self.processor.process(
-                    generation_id=generation_id,
-                    source_path=edited_source_path,
-                    output_dir=self.colorings_dir,
-                    orientation=request.orientation,
-                )
+            color_path = color_paths[0] if color_paths else None
+            pdf_path = self.colorings_dir / f"{generation_id}.pdf"
+            color_pdf_path = self.colorings_dir / f"{generation_id}-color.pdf"
+            ColoringProcessor.create_pages_pdf(paths=line_paths, pdf_path=pdf_path, orientation=request.orientation)
+            if color_paths:
+                ColoringProcessor.create_pages_pdf(paths=color_paths, pdf_path=color_pdf_path, orientation=request.orientation)
             self.storage.mark_generation_done(
                 generation_id,
                 source_path=str(source_path),
                 color_path=str(color_path) if color_path is not None else None,
                 provider_request_id=provider_request_id,
-                png_path=str(processed.png_path),
-                pdf_path=str(processed.pdf_path),
-                color_pdf_path=str(processed.color_pdf_path),
+                png_path=str(line_paths[0]),
+                pdf_path=str(pdf_path),
+                color_pdf_path=str(color_pdf_path) if color_paths else None,
             )
         except Exception as exc:  # noqa: BLE001
             self.storage.mark_generation_failed(generation_id, self._friendly_error(exc))
@@ -178,8 +181,11 @@ class GenerationWorker:
     def _friendly_error(error: Exception) -> str:
         code = getattr(error, "code", None)
         if code == "moderation_blocked":
-            return "Toto zadanie generátor odmietol. Skúste scénu opísať jednoduchšie."
+            return "Poskytovateľ odmietol zadanie (moderation_blocked). Dôvod nie je známy; skúste všeobecné postavy alebo upravte vlastný nápad."
         status_code = getattr(error, "status_code", None)
         if status_code == 429:
             return "OpenAI limit je momentálne vyčerpaný. Skúste to neskôr."
+        if status_code:
+            request_id = getattr(error, "request_id", None)
+            return f"Poskytovateľ vrátil chybu HTTP {status_code}" + (f" (kód: {code})" if code else "") + (f"; ID požiadavky: {request_id}" if request_id else "") + "."
         return str(error) or "Generovanie zlyhalo bez bližšieho popisu."

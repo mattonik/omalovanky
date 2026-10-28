@@ -10,6 +10,7 @@ class Settings:
     db_path: Path
     colorings_dir: Path
     openai_api_key: str | None = field(repr=False)
+    app_password: str | None = field(default=None, repr=False)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -17,6 +18,7 @@ class Settings:
             db_path=Path(os.getenv("APP_DB_PATH", "./data/app.db")).expanduser(),
             colorings_dir=Path(os.getenv("COLORINGS_DIR", "./data/colorings")).expanduser(),
             openai_api_key=os.getenv("OPENAI_API_KEY"),
+            app_password=os.getenv("OMALOVANKY_PASSWORD") or None,
         )
 
     @property

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
@@ -29,7 +30,7 @@ class ColoringProcessor:
     def process(
         self,
         *,
-        generation_id: int,
+        generation_id: int | str,
         source_path: Path,
         output_dir: Path,
         orientation: Orientation,
@@ -57,23 +58,20 @@ class ColoringProcessor:
         return ProcessedFiles(png_path=png_path, pdf_path=pdf_path, color_pdf_path=color_pdf_path)
 
     @staticmethod
-    def _create_pdf(*, png_path: Path, pdf_path: Path, orientation: Orientation) -> None:
+    def _create_pdf(*, png_path: Path, pdf_path: Path | BytesIO, orientation: Orientation) -> None:
+        ColoringProcessor.create_pages_pdf(paths=[png_path], pdf_path=pdf_path, orientation=orientation)
+
+    @staticmethod
+    def create_pages_pdf(*, paths: list[Path], pdf_path: Path | BytesIO, orientation: Orientation) -> None:
         page_size = A4 if orientation == "portrait" else landscape(A4)
-        pdf = canvas.Canvas(str(pdf_path), pagesize=page_size)
+        pdf = canvas.Canvas(str(pdf_path) if isinstance(pdf_path, Path) else pdf_path, pagesize=page_size)
         margin = 12 * 72 / 25.4
         width = page_size[0] - margin * 2
         height = page_size[1] - margin * 2
-        pdf.drawImage(
-            ImageReader(str(png_path)),
-            margin,
-            margin,
-            width=width,
-            height=height,
-            preserveAspectRatio=True,
-            anchor="c",
-            mask="auto",
-        )
-        pdf.showPage()
+        for path in paths:
+            pdf.drawImage(ImageReader(str(path)), margin, margin, width=width, height=height,
+                          preserveAspectRatio=True, anchor="c", mask="auto")
+            pdf.showPage()
         pdf.save()
 
 
@@ -89,7 +87,8 @@ class ComicProcessor:
         with Image.open(source_path) as source:
             grayscale = ImageOps.autocontrast(source.convert("L"))
             fitted = ImageOps.contain(grayscale, (1024, 1024), Image.Resampling.LANCZOS)
-            line_art = fitted.point(lambda value: 255 if value > 210 else 0, mode="1")
+            edges = fitted.filter(ImageFilter.FIND_EDGES)
+            line_art = edges.point(lambda value: 0 if value > 45 else 255, mode="1")
             page = Image.new("1", (1024, 1024), 1)
             x = (page.width - line_art.width) // 2
             y = (page.height - line_art.height) // 2
@@ -120,9 +119,9 @@ class ComicProcessor:
             raise ValueError(f"Komiks musí mať presne {COMIC_PAGE_COUNT} {label}.")
 
     @staticmethod
-    def _create_zine_pdf(*, paths: list[Path], pdf_path: Path) -> None:
+    def _create_zine_pdf(*, paths: list[Path], pdf_path: Path | BytesIO) -> None:
         page_size = landscape(A4)
-        pdf = canvas.Canvas(str(pdf_path), pagesize=page_size)
+        pdf = canvas.Canvas(str(pdf_path) if isinstance(pdf_path, Path) else pdf_path, pagesize=page_size)
         page_width, page_height = page_size
         cell_width = page_width / 4
         cell_height = page_height / 2

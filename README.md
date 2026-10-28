@@ -49,6 +49,8 @@ RUN_E2E=1 pytest -m e2e
 
 E2E testy používajú lokálny fake provider a nemíňajú OpenAI kredit.
 
+Pri omaľovánke možno vybrať 1 až 6 strán. Každá strana je samostatný generovaný obrázok; výsledný PDF obsahuje všetky strany v poradí a generovanie viacerých strán spotrebuje viac kreditu. Pri farebnom obrázku sú k dispozícii farebný aj omaľovánkový PDF.
+
 ## Docker Compose
 
 ```bash
@@ -62,6 +64,8 @@ OPENAI_API_KEY=sk-...
 OMALOVANKY_PORT=8081
 OMALOVANKY_DATA_DIR=/srv/appdata/omalovanky
 ```
+
+Docker binds to localhost by default. To allow access from a trusted network or Tailscale, set `OMALOVANKY_BIND=0.0.0.0` and a strong `OMALOVANKY_PASSWORD`. The app requests HTTP Basic credentials; use HTTPS through a trusted reverse proxy or Tailscale HTTPS because plain HTTP does not encrypt the password. The username may be any value. The generation queue is limited to 20 active jobs.
 
 Databáza a obrázky sú uložené v `OMALOVANKY_DATA_DIR`. Compose odovzdá `OPENAI_API_KEY` kontajneru priamo z `.env` alebo zo secret environment poľa vášho Compose pluginu. Kľúč nie je uložený v Git repozitári ani databáze; `.env` je v `.gitignore` a `.dockerignore`.
 

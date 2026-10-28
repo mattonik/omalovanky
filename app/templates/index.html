@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#ffffff" />
     <title>Čarovné omaľovánky</title>
     <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v=20261028g" />
   </head>
   <body>
     <header class="app-header">
@@ -18,11 +18,19 @@
         <span class="status-dot"></span>
         <span>Pripravené na tvorenie</span>
       </div>
-      <div class="header-actions" aria-hidden="true">
-        <span class="round-icon">?</span>
-        <span class="round-icon">⚙</span>
+      <div class="header-actions">
+        <button class="round-icon" id="helpButton" type="button" aria-label="Pomoc" title="Pomoc">?</button>
+        <button class="round-icon" id="settingsButton" type="button" aria-label="Nastavenia generovania" title="Nastavenia generovania">⚙</button>
       </div>
     </header>
+    <button id="jobIndicator" type="button" hidden aria-live="polite">Úlohy</button>
+
+    <dialog id="helpDialog" aria-labelledby="helpTitle">
+      <h2 id="helpTitle">Pomoc</h2>
+      <p>Vyber postavy, pozadie a aktivitu. Vlastný nápad môže aktivitu nahradiť.</p>
+      <p>Po vytvorení sleduj úlohu v časti Spracovanie. Hotový výsledok otvor a stiahni ako PDF.</p>
+      <form method="dialog"><button type="submit" class="primary-button">Zavrieť</button></form>
+    </dialog>
 
     <main class="app-shell">
       <section id="builderView" class="view builder-view">
@@ -37,6 +45,12 @@
           <div class="jobs-heading"><h2>Spracovanie</h2><span>Úlohy ostanú aj po obnovení stránky</span></div>
           <div id="jobsRail" class="jobs-rail"></div>
         </section>
+
+        <details class="recent-section" id="recentSection" hidden>
+          <summary class="recent-heading">Posledné výtvory</summary>
+          <div class="recent-rail" id="recentRail"></div>
+          <button id="loadMoreRecent" type="button" hidden>Načítať ďalšie</button>
+        </details>
 
         <form id="generationForm">
           <section class="mode-switch" aria-label="Typ tvorby">
@@ -76,7 +90,7 @@
                 </section>
               {% endfor %}
             </div>
-            <p class="selection-hint" id="selectionHint">Postavy sú voliteľné. Môžeš vybrať iba scénu.</p>
+            <p class="selection-hint" id="selectionHint">Postavy sú voliteľné. Vyber najviac 4.</p>
           </fieldset>
 
           <fieldset class="builder-section">
@@ -95,7 +109,7 @@
                 </button>
               {% endfor %}
             </div>
-            <p class="selection-hint">Vyber jedno alebo viac pozadí, alebo nechaj iba postavy.</p>
+            <p class="selection-hint" id="sceneHint">Vyber najviac 4 pozadia; spoja sa v jednej scéne.</p>
           </fieldset>
 
           <fieldset class="builder-section action-section" id="coloringOptions">
@@ -104,10 +118,10 @@
               <div class="action-grid">
                 {% for action in catalog.actions %}
                   <button
-                    class="action-card {% if action.id == 'riding' %}selected{% endif %}"
+                    class="action-card {% if action.id == 'playing' %}selected{% endif %}"
                     type="button"
                     data-action-id="{{ action.id }}"
-                    aria-pressed="{{ 'true' if action.id == 'riding' else 'false' }}"
+                    aria-pressed="{{ 'true' if action.id == 'playing' else 'false' }}"
                   >
                     <span class="action-icon" aria-hidden="true">{{ action.icon }}</span>
                     <strong>{{ action.label }}</strong>
@@ -115,7 +129,7 @@
                 {% endfor %}
               </div>
               <label class="idea-field">
-                <span>Vlastný nápad</span>
+                <span>Vlastný nápad (nahradí vybranú aktivitu)</span>
                 <textarea
                   id="customIdea"
                   maxlength="300"
@@ -165,7 +179,13 @@
             </div>
           </fieldset>
 
-          <section class="generation-bar" aria-label="Nastavenia generovania">
+          <details class="builder-section prompt-preview">
+            <summary>Skontrolovať zadanie pre generátor</summary>
+            <button type="button" id="previewPromptButton">Zobraziť aktuálne zadanie</button>
+            <pre id="promptPreview" aria-live="polite"></pre>
+          </details>
+
+          <section class="generation-bar" id="generationSettings" tabindex="-1" aria-label="Nastavenia generovania">
             <div class="setting-group" id="paperSetting">
               <span class="setting-label">Papier</span>
               <div class="segmented-control" id="orientationControl">
@@ -184,24 +204,32 @@
                   <span aria-hidden="true">✎</span> Priama omaľovánka
                 </button>
                 <button type="button" data-generation-mode="color_first" aria-pressed="false">
-                  <span aria-hidden="true">🎨</span> Farebný základ
+                  <span aria-hidden="true">🎨</span> Farebný obrázok
                 </button>
               </div>
               <span class="setting-label">Zložitosť</span>
-              <div class="fixed-setting"><span aria-hidden="true">☺</span> Pre deti 3–5 rokov</div>
+              <div class="segmented-control complexity-control" role="group" aria-label="Zložitosť">
+                <button class="selected" type="button" data-complexity="simple" aria-pressed="true">Jednoduchá</button>
+                <button type="button" data-complexity="medium" aria-pressed="false">Stredná</button>
+                <button type="button" data-complexity="detailed" aria-pressed="false">Detailná</button>
+              </div>
             </div>
             <div class="setting-group" id="comicModeSetting" hidden>
-              <span class="setting-label">Náhľad</span>
+              <span class="setting-label">Verzia knižky</span>
               <div class="segmented-control" id="comicModeControl">
                 <button class="selected" type="button" data-primary-mode="line_art" aria-pressed="true">
-                  <span aria-hidden="true">✎</span> Omaľovánkový
+                  <span aria-hidden="true">✎</span> Omaľovánková
                 </button>
                 <button type="button" data-primary-mode="color" aria-pressed="false">
-                  <span aria-hidden="true">🎨</span> Farebný
+                  <span aria-hidden="true">🎨</span> Farebná
                 </button>
               </div>
               <span class="setting-label">Formát</span>
               <div class="fixed-setting"><span aria-hidden="true">▦</span> A4 mini-zine</div>
+            </div>
+            <div class="setting-group" id="pageCountSetting">
+              <label class="setting-label" for="pageCount">Počet strán</label>
+              <input id="pageCount" type="number" min="1" max="6" value="1" required />
             </div>
             <div class="submit-group">
               <button id="generateButton" class="primary-button" type="submit">
@@ -223,7 +251,7 @@
           Upraviť zadanie
         </button>
         <div class="result-heading">
-          <h1>Hotovo! Môžeme vyfarbovať.</h1>
+          <h1 id="resultTitle">Hotovo! Môžeme vyfarbovať.</h1>
           <p id="resultSummary"></p>
         </div>
         <div class="result-layout">
@@ -234,7 +262,7 @@
             <div class="comic-pages" id="comicPages" hidden></div>
             <button id="retryButton" class="retry-button" type="button">
               <span aria-hidden="true">↻</span>
-              Niečo na obrázku nesedí? <strong>Skúsiť znova</strong>
+              Vygenerovať znova
             </button>
           </div>
           <div class="result-actions">
@@ -244,20 +272,14 @@
               </svg>
               Stiahnuť PDF
             </a>
+            <a id="alternatePdfButton" class="result-button outline" download hidden>Stiahnuť druhú verziu PDF</a>
+            <p id="comicInstructions" class="retention-note" hidden>Vytlač na šírku v skutočnej veľkosti. Prelož list na polovicu a potom na štvrtiny; rozlož ho, nastrihni stredový záhyb a zlož do knižky.</p>
             <button id="similarButton" class="result-button outline" type="button">
               <span aria-hidden="true">✦</span>
               Vytvoriť podobnú
             </button>
-            <p class="retention-note">ⓘ Zostávajú uložené všetky výsledky, v zozname sa ukazuje posledných 20.</p>
           </div>
         </div>
-        <section class="recent-section" id="recentSection" hidden>
-          <div class="recent-heading">
-            <h2>Posledné omaľovánky</h2>
-            <span>Zobraziť všetky posledné</span>
-          </div>
-          <div class="recent-rail" id="recentRail"></div>
-        </section>
       </section>
     </main>
 
@@ -270,6 +292,6 @@
     </div>
 
     <script id="catalogData" type="application/json">{{ catalog | tojson }}</script>
-    <script type="module" src="/static/app.js?v=480aba9"></script>
+    <script type="module" src="/static/app.js?v=20261028g"></script>
   </body>
 </html>

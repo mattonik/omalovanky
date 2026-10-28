@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 import time
 from pathlib import Path
 
@@ -84,6 +85,72 @@ def test_api_allows_second_generation_to_queue(tmp_path: Path) -> None:
     assert first.json()["status"] == "queued"
     assert second.status_code == 202
     assert second.json()["status"] == "queued"
+
+
+def test_queue_limit_and_password(tmp_path: Path) -> None:
+    settings = Settings(db_path=tmp_path / "app.db", colorings_dir=tmp_path / "out", openai_api_key="test", app_password="secret")
+    with TestClient(create_app(settings, image_provider=FakeImageProvider(), start_worker=False)) as client:
+        assert client.get("/api/colorings").status_code == 401
+        assert client.get("/api/colorings", auth=("user", "wrong")).status_code == 401
+        for _ in range(20):
+            assert client.post("/api/generations", json=valid_payload(), auth=("user", "secret")).status_code == 202
+        assert client.post("/api/generations", json=valid_payload(), auth=("user", "secret")).status_code == 429
+
+
+def test_recovered_job_reuses_saved_source(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path)
+    storage = Storage(settings.db_path)
+    storage.init_db()
+    request = GenerationRequest.model_validate(valid_payload())
+    job = storage.create_generation(request, build_image_prompt(request))
+    storage.claim_next_generation()
+    settings.colorings_dir.mkdir()
+    (settings.colorings_dir / f"{job['id']}-source.png").write_bytes(make_png_bytes())
+    storage.recover_interrupted_generations()
+    provider = FakeImageProvider()
+    worker = GenerationWorker(storage=storage, image_provider=provider, colorings_dir=settings.colorings_dir)
+    assert worker.process_one()
+    assert storage.get_generation(job["id"])["status"] == "done"
+    assert not provider.generate_calls
+
+
+def test_multiple_pages_generate_one_pdf_and_reuse_completed_source(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path)
+    storage = Storage(settings.db_path)
+    storage.init_db()
+    payload = valid_payload(mode="color_first") | {"page_count": 2}
+    request = GenerationRequest.model_validate(payload)
+    job = storage.create_generation(request, build_color_preview_prompt(request))
+    settings.colorings_dir.mkdir()
+    (settings.colorings_dir / f"{job['id']}-source.png").write_bytes(make_color_png_bytes())
+    provider = FakeImageProvider()
+    worker = GenerationWorker(storage=storage, image_provider=provider, colorings_dir=settings.colorings_dir)
+    assert worker.process_one()
+    result = storage.get_generation(job["id"])
+    assert result["status"] == "done" and result["completed_steps"] == 2
+    assert len(provider.generate_calls) == 1
+    for key in ("pdf_path", "color_pdf_path"):
+        assert len(re.findall(rb"/Type\s*/Page\b", Path(result[key]).read_bytes())) == 2
+    with TestClient(create_app(settings, image_provider=provider, start_worker=False)) as client:
+        status = client.get(f"/api/generations/{job['id']}").json()
+        assert len(status["pages"]) == 2
+        assert client.get(status["pages"][1]["color_url"]).status_code == 200
+        Path(result["pdf_path"]).unlink()
+        assert len(re.findall(rb"/Type\s*/Page\b", client.get(status["pdf_url"]).content)) == 2
+
+
+def test_prompt_preview_matches_queued_request(tmp_path: Path) -> None:
+    payload = valid_payload()
+    payload.update(characters=["princess", "skye"], worlds=[], scenes=["beach"], action="riding", custom_idea="They play together on a beach")
+    app = create_app(make_settings(tmp_path), image_provider=FakeImageProvider(), start_worker=False)
+    with TestClient(app) as client:
+        preview = client.post("/api/generations/prompt", json=payload)
+        queued = client.post("/api/generations", json=payload)
+        prompt = preview.json()["prompts"][0]
+        assert prompt == app.state.services.storage.get_generation(queued.json()["id"])["prompt"]
+        assert "young princess" in prompt and "Skye from PAW Patrol" in prompt
+        assert "They play together on a beach" in prompt
+        assert "riding together on a gentle adventure" not in prompt
 
 
 def test_idle_worker_does_not_exhaust_sqlite_connections(tmp_path: Path) -> None:

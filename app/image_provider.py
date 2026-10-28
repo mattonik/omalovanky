@@ -36,7 +36,7 @@ class OpenAIImageProvider:
         client = OpenAI(api_key=self._read_api_key())
         size = "1024x1536" if orientation == "portrait" else "1536x1024"
         result = client.images.generate(
-            model="gpt-image-2",
+            model="gpt-image-2.5-sunburst",
             prompt=prompt,
             n=1,
             size=size,
@@ -57,13 +57,12 @@ class OpenAIImageProvider:
         size = "1024x1536" if orientation == "portrait" else "1536x1024"
         with source_path.open("rb") as source_file:
             result = client.images.edit(
-                model="gpt-image-2",
+                model="gpt-image-2.5-sunburst",
                 image=source_file,
                 prompt=prompt,
                 n=1,
                 size=size,
                 quality="medium",
-                input_fidelity="high",
                 output_format="png",
                 background="opaque",
             )

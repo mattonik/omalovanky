@@ -5,11 +5,12 @@ services:
     container_name: carovne-omalovanky
     restart: unless-stopped
     ports:
-      - "${OMALOVANKY_PORT:-8081}:8080"
+      - "${OMALOVANKY_BIND:-127.0.0.1}:${OMALOVANKY_PORT:-8081}:8080"
     environment:
       APP_DB_PATH: /data/app.db
       COLORINGS_DIR: /data/colorings
       OPENAI_API_KEY: "${OPENAI_API_KEY:?Set OPENAI_API_KEY in the OMV Environment field}"
+      OMALOVANKY_PASSWORD: "${OMALOVANKY_PASSWORD:-}"
       TZ: "${TZ:-Europe/Bratislava}"
     volumes:
       - "${OMALOVANKY_DATA_DIR:-/srv/appdata/omalovanky}:/data"

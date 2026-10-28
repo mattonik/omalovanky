@@ -81,6 +81,22 @@ def test_comic_worker_generates_pages_and_booklet_pdfs(tmp_path: Path) -> None:
     assert Path(completed["line_art_pdf_path"]).read_bytes().startswith(b"%PDF")
     assert all(Path(page["color_path"]).is_file() for page in completed["pages"])
     assert all(Path(page["line_art_path"]).is_file() for page in completed["pages"])
+    with Image.open(completed["pages"][0]["line_art_path"]) as panel:
+        assert panel.convert("L").getpixel((512, 512)) == 255
+
+
+def test_comic_creation_rolls_back_if_page_insert_fails(tmp_path: Path) -> None:
+    storage = Storage(tmp_path / "app.db")
+    storage.init_db()
+    with storage._connect() as connection:
+        connection.execute("CREATE TRIGGER reject_page BEFORE INSERT ON comic_pages BEGIN SELECT RAISE(ABORT, 'page failed'); END")
+    request = ComicRequest.model_validate(valid_comic_payload())
+    import sqlite3
+    import pytest
+    with pytest.raises(sqlite3.IntegrityError):
+        storage.create_comic(request, build_comic_page_prompts(request))
+    with storage._connect() as connection:
+        assert connection.execute("SELECT count(*) FROM comic_generations").fetchone()[0] == 0
 
 
 def test_comic_api_flow_and_downloads(tmp_path: Path) -> None:
@@ -98,6 +114,11 @@ def test_comic_api_flow_and_downloads(tmp_path: Path) -> None:
             time.sleep(0.02)
         color_pdf = client.get(item["color_pdf_url"])
         line_art_pdf = client.get(item["line_art_pdf_url"])
+        stored = client.app.state.services.storage.get_comic(comic_id)
+        Path(stored["color_pdf_path"]).unlink()
+        Path(stored["line_art_pdf_path"]).unlink()
+        rebuilt_color_pdf = client.get(item["color_pdf_url"])
+        rebuilt_line_art_pdf = client.get(item["line_art_pdf_url"])
         first_page = client.get(item["pages"][0]["line_art_url"])
         recent = client.get("/api/comics")
 
@@ -105,6 +126,8 @@ def test_comic_api_flow_and_downloads(tmp_path: Path) -> None:
     assert len(item["pages"]) == 6
     assert color_pdf.status_code == 200 and color_pdf.content.startswith(b"%PDF")
     assert line_art_pdf.status_code == 200 and line_art_pdf.content.startswith(b"%PDF")
+    assert rebuilt_color_pdf.status_code == 200 and rebuilt_color_pdf.content.startswith(b"%PDF")
+    assert rebuilt_line_art_pdf.status_code == 200 and rebuilt_line_art_pdf.content.startswith(b"%PDF")
     assert first_page.status_code == 200 and first_page.headers["content-type"].startswith("image/png")
     assert recent.json()[0]["id"] == comic_id
 

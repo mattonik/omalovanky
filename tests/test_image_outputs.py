@@ -93,6 +93,12 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
         png = client.get(item["png_url"])
         color = client.get(item["color_url"])
         pdf = client.get(item["pdf_url"])
+        color_pdf = client.get(item["color_pdf_url"])
+        stored = client.app.state.services.storage.get_generation(generation_id)
+        Path(stored["pdf_path"]).unlink()
+        Path(stored["color_pdf_path"]).unlink()
+        rebuilt_pdf = client.get(item["pdf_url"])
+        rebuilt_color_pdf = client.get(item["color_pdf_url"])
         print_page = client.get(item["print_url"])
         pattern_print = client.get(item["pattern_print_url"])
         recent = client.get("/api/colorings")
@@ -100,6 +106,9 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
     assert png.status_code == 200 and png.headers["content-type"].startswith("image/png")
     assert color.status_code == 200 and color.headers["content-type"].startswith("image/png")
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    assert color_pdf.status_code == 200 and color_pdf.content.startswith(b"%PDF")
+    assert rebuilt_pdf.status_code == 200 and rebuilt_pdf.content.startswith(b"%PDF")
+    assert rebuilt_color_pdf.status_code == 200 and rebuilt_color_pdf.content.startswith(b"%PDF")
     assert print_page.status_code == 200 and "window.print()" in print_page.text
     assert pattern_print.status_code == 200 and "Farebný vzor" in pattern_print.text
     assert recent.json()[0]["id"] == generation_id

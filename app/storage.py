@@ -17,6 +17,10 @@ class ComicNotFoundError(RuntimeError):
     pass
 
 
+class QueueFullError(RuntimeError):
+    pass
+
+
 class ClosingConnection(sqlite3.Connection):
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
         try:
@@ -142,12 +146,14 @@ class Storage:
     def create_generation(self, request: GenerationRequest, prompt: str) -> dict[str, Any]:
         now = utc_now()
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._check_queue(connection)
             cursor = connection.execute(
                 """
-                INSERT INTO generations(status, request_json, prompt, created_at, updated_at)
-                VALUES ('queued', ?, ?, ?, ?)
+                INSERT INTO generations(status, request_json, prompt, created_at, updated_at, total_steps)
+                VALUES ('queued', ?, ?, ?, ?, ?)
                 """,
-                (request.model_dump_json(), prompt, now, now),
+                (request.model_dump_json(), prompt, now, now, request.page_count),
             )
             generation_id = int(cursor.lastrowid)
             connection.commit()
@@ -156,6 +162,8 @@ class Storage:
     def create_comic(self, request: ComicRequest, prompts: list[str]) -> dict[str, Any]:
         now = utc_now()
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._check_queue(connection)
             cursor = connection.execute(
                 """
                 INSERT INTO comic_generations(status, request_json, prompt_json, created_at, updated_at)
@@ -174,12 +182,22 @@ class Storage:
             connection.commit()
         return self.get_comic(comic_id)
 
+    @staticmethod
+    def _check_queue(connection: sqlite3.Connection) -> None:
+        count = connection.execute("SELECT (SELECT count(*) FROM generations WHERE status IN ('queued', 'running')) + (SELECT count(*) FROM comic_generations WHERE status IN ('queued', 'running'))").fetchone()[0]
+        if count >= 20:
+            raise QueueFullError("Fronta je plná. Počkajte na dokončenie úloh.")
+
     def set_generation_phase(self, generation_id: int, phase: str) -> None:
         with self._connect() as connection:
             connection.execute(
                 "UPDATE generations SET phase = ?, updated_at = ? WHERE id = ?",
                 (phase, utc_now(), generation_id),
             )
+
+    def set_generation_progress(self, generation_id: int, completed: int) -> None:
+        with self._connect() as connection:
+            connection.execute("UPDATE generations SET completed_steps = ?, updated_at = ? WHERE id = ?", (completed, utc_now(), generation_id))
 
     def set_comic_phase(self, comic_id: int, phase: str) -> None:
         with self._connect() as connection:
@@ -375,16 +393,16 @@ class Storage:
             )
             return generation_count + cursor.rowcount
 
-    def list_completed(self, limit: int = 20) -> list[dict[str, Any]]:
+    def list_completed(self, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
         with self._connect() as connection:
             rows = connection.execute(
                 """
                 SELECT * FROM generations
                 WHERE status = 'done' AND png_path IS NOT NULL
                 ORDER BY completed_at DESC, id DESC
-                LIMIT ?
+                LIMIT ? OFFSET ?
                 """,
-                (limit,),
+                (limit, offset),
             ).fetchall()
         return [self._row_to_dict(row) for row in rows]
 
@@ -402,16 +420,16 @@ class Storage:
             ).fetchall()
         return self._comic_row_to_dict(row, pages)
 
-    def list_completed_comics(self, limit: int = 20) -> list[dict[str, Any]]:
+    def list_completed_comics(self, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
         with self._connect() as connection:
             rows = connection.execute(
                 """
                 SELECT * FROM comic_generations
                 WHERE status = 'done' AND line_art_pdf_path IS NOT NULL
                 ORDER BY completed_at DESC, id DESC
-                LIMIT ?
+                LIMIT ? OFFSET ?
                 """,
-                (limit,),
+                (limit, offset),
             ).fetchall()
             comics = []
             for row in rows:

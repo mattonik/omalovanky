@@ -8,11 +8,15 @@ from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, SCENE_BY_ID, WORLD_BY_ID
 
 Orientation = Literal["portrait", "landscape"]
 GenerationMode = Literal["line_art_direct", "color_first"]
+Complexity = Literal["simple", "medium", "detailed"]
 ComicStoryType = Literal["trip", "rescue", "race", "surprise", "calm_day"]
 ComicPrimaryMode = Literal["line_art", "color"]
 
 
 class GenerationRequest(BaseModel):
+    generic_characters: bool = False
+    page_count: int = Field(default=1, ge=1, le=6)
+    complexity: Complexity = "simple"
     worlds: list[str] = Field(default_factory=list, max_length=4)
     characters: list[str] = Field(default_factory=list, max_length=4)
     scenes: list[str] = Field(default_factory=list, max_length=4)
@@ -81,6 +85,7 @@ class GenerationStatus(BaseModel):
     status: Literal["queued", "running", "done", "failed"]
     request: GenerationRequest
     error: str | None = None
+    completed_at: str | None = None
     phase: Literal["queued", "generating", "processing", "done", "failed"] = "queued"
     completed_steps: int = 0
     total_steps: int = 1
@@ -88,11 +93,13 @@ class GenerationStatus(BaseModel):
     pdf_url: str | None = None
     color_pdf_url: str | None = None
     color_url: str | None = None
+    pages: list[dict[str, str | int | None]] = Field(default_factory=list)
     print_url: str | None = None
     pattern_print_url: str | None = None
 
 
 class ComicRequest(BaseModel):
+    generic_characters: bool = False
     worlds: list[str] = Field(default_factory=list, max_length=4)
     characters: list[str] = Field(default_factory=list, max_length=4)
     scenes: list[str] = Field(default_factory=list, max_length=4)
@@ -159,6 +166,7 @@ class ComicStatus(BaseModel):
     status: Literal["queued", "running", "done", "failed"]
     request: ComicRequest
     error: str | None = None
+    completed_at: str | None = None
     phase: Literal["queued", "generating", "processing", "done", "failed"] = "queued"
     completed_pages: int = 0
     total_pages: int = 6

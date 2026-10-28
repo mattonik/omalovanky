@@ -1,7 +1,19 @@
 from __future__ import annotations
 
-from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, SCENE_BY_ID, WORLD_BY_ID
+from .catalog import ACTION_BY_ID, CHARACTER_BY_ID, GENERIC_CHARACTERS, SCENE_BY_ID
 from .schemas import ComicRequest, GenerationRequest
+
+COMPLEXITY = {
+    "simple": ("ages 3 to 5", "thick, smooth, consistent outlines", "very simple friendly shapes and large closed areas for crayons", "minimal background detail and generous empty space"),
+    "medium": ("children", "smooth, clear outlines of medium thickness", "moderately detailed shapes with comfortably sized closed coloring areas", "some background details while keeping the main subjects clear"),
+    "detailed": ("older children", "smooth, clear, finer outlines", "intricate but readable shapes with smaller closed coloring areas", "richer background details without clutter"),
+}
+
+
+def generation_page_prompts(request: GenerationRequest, prompt: str) -> list[str]:
+    if request.page_count == 1:
+        return [prompt]
+    return [f"{prompt}\nCreate a distinct variation for page {page} of {request.page_count}." for page in range(1, request.page_count + 1)]
 
 COMIC_STORY_TYPES = {
     "trip": (
@@ -62,15 +74,14 @@ COMIC_STORY_TYPES = {
 }
 
 
+def character_names(request: GenerationRequest | ComicRequest) -> list[str]:
+    return [GENERIC_CHARACTERS.get(item, CHARACTER_BY_ID[item].prompt_name) if request.generic_characters
+            else CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+
+
 def build_image_prompt(request: GenerationRequest) -> str:
-    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
-    if not worlds:
-        world_text = "none selected"
-    elif len(worlds) == 1:
-        world_text = worlds[0]
-    else:
-        world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
-    characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+    audience, outlines, shapes, background_detail = COMPLEXITY[request.complexity]
+    characters = character_names(request)
     if characters:
         if len(characters) == 1:
             character_text = characters[0]
@@ -95,14 +106,14 @@ def build_image_prompt(request: GenerationRequest) -> str:
             "Use only the selected background and action as the visual anchor for the scene."
         )
 
-    action = ACTION_BY_ID[request.action].prompt_text
+    action = request.custom_idea or ACTION_BY_ID[request.action].prompt_text
     custom = (
         f"Additional scene direction: {request.custom_idea}."
         if request.custom_idea
         else "Keep the scene focused on one simple action."
     )
     scenes = [SCENE_BY_ID[item].prompt_text for item in request.scenes]
-    scene_text = ", ".join(scenes) if scenes else "no specific background scene"
+    scene_text = ", ".join(scenes) if scenes else "plain white background with no scenery or extra objects"
     composition = (
         "portrait composition with the subjects centered vertically"
         if request.orientation == "portrait"
@@ -110,9 +121,8 @@ def build_image_prompt(request: GenerationRequest) -> str:
     )
 
     return f"""
-Create one printable children's coloring page for ages 3 to 5.
+Create one printable children's coloring page for {audience}.
 
-Worlds: {world_text}.
 {subjects}
 Action: {action}.
 Background: {scene_text}.
@@ -122,13 +132,12 @@ Use a {composition}.
 {subject_guidance}
 {recognition_guidance}
 Use only the requested subjects and background. Do not add princesses, castles, crowns, or fairy-tale elements unless explicitly selected.
-When multiple worlds are selected, blend their iconic visual cues naturally in one simple scene.
 
 Art requirements:
 - pure black line art on a pure white background
-- thick, smooth, consistent outlines
-- very simple friendly shapes and large closed areas for crayons
-- minimal background detail and generous empty space
+- {outlines}
+- {shapes}
+- {background_detail}
 - safe margins around the entire artwork
 - no color, gray, shading, hatching, gradients, texture, or filled black regions
 - no text, letters, numbers, speech bubbles, logos, watermarks, borders, or page decorations
@@ -138,14 +147,8 @@ Art requirements:
 
 
 def build_color_preview_prompt(request: GenerationRequest) -> str:
-    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
-    if not worlds:
-        world_text = "none selected"
-    elif len(worlds) == 1:
-        world_text = worlds[0]
-    else:
-        world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
-    characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+    audience, outlines, shapes, background_detail = COMPLEXITY[request.complexity]
+    characters = character_names(request)
     if characters:
         if len(characters) == 1:
             character_text = characters[0]
@@ -155,33 +158,34 @@ def build_color_preview_prompt(request: GenerationRequest) -> str:
     else:
         subjects = "Characters: none selected."
 
-    action = ACTION_BY_ID[request.action].prompt_text
+    action = request.custom_idea or ACTION_BY_ID[request.action].prompt_text
     composition = (
         "portrait composition with the subjects centered vertically"
         if request.orientation == "portrait"
         else "landscape composition with the subjects arranged clearly from left to right"
     )
     scenes = [SCENE_BY_ID[item].prompt_text for item in request.scenes]
-    scene_text = ", ".join(scenes) if scenes else "no specific background scene"
+    scene_text = ", ".join(scenes) if scenes else "plain white background with no scenery or extra objects"
 
     return f"""
-Create a simple full-color children's reference illustration for ages 3 to 5.
+Create a full-color children's reference illustration for {audience}.
 
-Worlds: {world_text}.
 {subjects}
 Action: {action}.
 Background: {scene_text}.
+Additional scene direction: {request.custom_idea or 'Keep the scene focused on one simple action'}.
 Use a {composition}.
 
-This is a friendly colored reference for a coloring page, so keep the same simple scene,
-clear silhouettes, and readable composition. Use bright, cheerful colors and large obvious
-shapes. If no specific characters were selected, let the scene clearly communicate the
-chosen theme worlds.
+This is a friendly colored reference for a coloring page. Use bright, cheerful colors,
+clear silhouettes, and a readable composition. If no specific characters were selected,
+focus on the chosen scene and action.
 Use only the requested subjects and background. Do not add princesses, castles, crowns, or fairy-tale elements unless explicitly selected.
 
 Art requirements:
 - full color on a clean white or softly tinted background
-- simple shapes, bold readable forms, and no visual clutter
+- {outlines}
+- {shapes}
+- {background_detail}
 - no text, letters, numbers, speech bubbles, logos, watermarks, borders, or page decorations
 - no scary expressions, danger, weapons, or visual clutter
 - one flat printable page, not a mockup, photograph, poster, or book spread
@@ -189,14 +193,8 @@ Art requirements:
 
 
 def build_line_art_edit_prompt(request: GenerationRequest) -> str:
-    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
-    if not worlds:
-        world_text = "none selected"
-    elif len(worlds) == 1:
-        world_text = worlds[0]
-    else:
-        world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
-    characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+    _, outlines, shapes, background_detail = COMPLEXITY[request.complexity]
+    characters = character_names(request)
     if characters:
         if len(characters) == 1:
             character_text = characters[0]
@@ -206,12 +204,11 @@ def build_line_art_edit_prompt(request: GenerationRequest) -> str:
     else:
         subject_text = "Characters: none selected."
     scenes = [SCENE_BY_ID[item].prompt_text for item in request.scenes]
-    scene_text = ", ".join(scenes) if scenes else "no specific background scene"
+    scene_text = ", ".join(scenes) if scenes else "plain white background with no scenery or extra objects"
 
     return f"""
 Convert the supplied colored children's illustration into a clean coloring-book page.
 
-Worlds: {world_text}.
 {subject_text}
 Background: {scene_text}.
 Keep the same composition, pose, framing, and character identities as the supplied image.
@@ -219,9 +216,9 @@ Use only the requested subjects and background. Do not add princesses, castles, 
 Turn everything into pure black line art on a pure white background.
 
 Art requirements:
-- thick, smooth, consistent outlines
-- very simple friendly shapes and large closed areas for crayons
-- minimal background detail and generous empty space
+- {outlines}
+- {shapes}
+- {background_detail}
 - safe margins around the entire artwork
 - no color, gray, shading, hatching, gradients, texture, or filled black regions
 - no text, letters, numbers, speech bubbles, logos, watermarks, borders, or page decorations
@@ -230,21 +227,14 @@ Art requirements:
 
 
 def build_comic_page_prompts(request: ComicRequest) -> list[str]:
-    worlds = [WORLD_BY_ID[item].prompt_name for item in request.worlds]
-    if not worlds:
-        world_text = "none selected"
-    elif len(worlds) == 1:
-        world_text = worlds[0]
-    else:
-        world_text = ", ".join(worlds[:-1]) + f", and {worlds[-1]}"
-    characters = [CHARACTER_BY_ID[item].prompt_name for item in request.characters]
+    characters = character_names(request)
     if characters:
         character_text = characters[0] if len(characters) == 1 else ", ".join(characters[:-1]) + f", and {characters[-1]}"
         subjects = f"Main recurring subjects: {character_text}."
         identity = "Keep the same subjects recognizable and visually consistent across the story."
     else:
         subjects = "Main recurring subjects: none selected."
-        identity = "Use the selected worlds as recurring visual anchors across the story."
+        identity = "Use the selected scene and story as recurring visual anchors."
     story_label, beats = COMIC_STORY_TYPES[request.story_type]
     custom = (
         f"Parent's extra idea for the whole story: {request.custom_idea}."
@@ -252,7 +242,7 @@ def build_comic_page_prompts(request: ComicRequest) -> list[str]:
         else "No extra parent idea was provided."
     )
     scenes = [SCENE_BY_ID[item].prompt_text for item in request.scenes]
-    scene_text = ", ".join(scenes) if scenes else "no specific background scene"
+    scene_text = ", ".join(scenes) if scenes else "plain white background with no scenery or extra objects"
     prompts = []
     for index, beat in enumerate(beats, start=1):
         prompts.append(
@@ -260,7 +250,6 @@ def build_comic_page_prompts(request: ComicRequest) -> list[str]:
 Create page {index} of 6 for a wordless children's picture mini-comic for ages 3 to 5.
 
 Story type: {story_label}.
-Worlds: {world_text}.
 {subjects}
 Background: {scene_text}.
 Story beat for this page: {beat}.
