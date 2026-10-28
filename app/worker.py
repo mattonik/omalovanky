@@ -75,21 +75,36 @@ class GenerationWorker:
             line_paths, color_paths = [], []
             page_prompts = generation_page_prompts(request, source_prompt)
             provider_request_id = job.get("provider_request_id")
+            source_generation_id = job.get("source_generation_id")
             for page_number in range(1, request.page_count + 1):
                 prefix = str(generation_id) if page_number == 1 else f"{generation_id}-page-{page_number}"
                 source_path = self.colorings_dir / f"{prefix}-source.png"
                 color_path = self.colorings_dir / f"{prefix}-color.png"
-                try:
-                    with Image.open(source_path) as saved:
-                        saved.verify()
-                except (OSError, ValueError):
-                    self.storage.set_generation_phase(generation_id, "generating")
-                    generated = self.image_provider.generate(page_prompts[page_number - 1], request.orientation)
-                    source_path.write_bytes(generated.content)
-                    provider_request_id = generated.request_id or provider_request_id
+                if source_generation_id:
+                    source_prefix = str(source_generation_id) if page_number == 1 else f"{source_generation_id}-page-{page_number}"
+                    original = self.colorings_dir / f"{source_prefix}-color.png"
+                    try:
+                        with Image.open(source_path) as saved:
+                            saved.verify()
+                    except (OSError, ValueError):
+                        self.storage.set_generation_phase(generation_id, "generating")
+                        edited = self.image_provider.edit(source_path=original, prompt=build_line_art_edit_prompt(request), orientation=request.orientation)
+                        source_path.write_bytes(edited.content)
+                        provider_request_id = edited.request_id or provider_request_id
+                else:
+                    try:
+                        with Image.open(source_path) as saved:
+                            saved.verify()
+                    except (OSError, ValueError):
+                        self.storage.set_generation_phase(generation_id, "generating")
+                        generated = self.image_provider.generate(page_prompts[page_number - 1], request.orientation)
+                        source_path.write_bytes(generated.content)
+                        provider_request_id = generated.request_id or provider_request_id
                 if request.generation_mode == "color_first":
                     color_path.write_bytes(source_path.read_bytes())
                     color_paths.append(color_path)
+                    self.storage.set_generation_progress(generation_id, page_number)
+                    continue
                 self.storage.set_generation_phase(generation_id, "processing")
                 try:
                     processed = self.processor.process(generation_id=prefix, source_path=source_path, output_dir=self.colorings_dir, orientation=request.orientation)
@@ -105,7 +120,8 @@ class GenerationWorker:
             color_path = color_paths[0] if color_paths else None
             pdf_path = self.colorings_dir / f"{generation_id}.pdf"
             color_pdf_path = self.colorings_dir / f"{generation_id}-color.pdf"
-            ColoringProcessor.create_pages_pdf(paths=line_paths, pdf_path=pdf_path, orientation=request.orientation)
+            if line_paths:
+                ColoringProcessor.create_pages_pdf(paths=line_paths, pdf_path=pdf_path, orientation=request.orientation)
             if color_paths:
                 ColoringProcessor.create_pages_pdf(paths=color_paths, pdf_path=color_pdf_path, orientation=request.orientation)
             self.storage.mark_generation_done(
@@ -113,8 +129,8 @@ class GenerationWorker:
                 source_path=str(source_path),
                 color_path=str(color_path) if color_path is not None else None,
                 provider_request_id=provider_request_id,
-                png_path=str(line_paths[0]),
-                pdf_path=str(pdf_path),
+                png_path=str(line_paths[0]) if line_paths else None,
+                pdf_path=str(pdf_path) if line_paths else None,
                 color_pdf_path=str(color_pdf_path) if color_paths else None,
             )
         except Exception as exc:  # noqa: BLE001

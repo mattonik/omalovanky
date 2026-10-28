@@ -10,10 +10,27 @@ COMPLEXITY = {
 }
 
 
+PAGE_SCENES = (
+    "the characters begin their shared activity together, gathering to make a plan",
+    "the characters explore and discover something surprising together while moving through the setting, spread out across the scene instead of gathering around an object",
+    "the characters help each other with a small challenge, interacting directly with each other from a different viewpoint",
+    "the characters enjoy a different playful activity together, shown in motion with a new arrangement",
+    "the characters celebrate a happy accomplishment together, facing each other with expressive poses",
+    "the characters relax and share a quiet, happy moment together, in a calm resting arrangement",
+)
+
+
 def generation_page_prompts(request: GenerationRequest, prompt: str) -> list[str]:
     if request.page_count == 1:
         return [prompt]
-    return [f"{prompt}\nCreate a distinct variation for page {page} of {request.page_count}." for page in range(1, request.page_count + 1)]
+    return [
+        f"{prompt}\n\n"
+        f"Page {page} of {request.page_count} is a separate coloring scene, not a near-copy of another page. "
+        f"For this page, show {scene}. "
+        "Treat the requested action and idea as the overall theme, and adapt them to this specific moment. "
+        "Keep the requested subjects and background, but use a different action, poses, and composition on each page."
+        for page, scene in enumerate(PAGE_SCENES[:request.page_count], start=1)
+    ]
 
 COMIC_STORY_TYPES = {
     "trip": (

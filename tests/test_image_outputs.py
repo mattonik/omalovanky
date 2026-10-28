@@ -90,17 +90,24 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
                 break
             time.sleep(0.02)
         assert item["status"] == "done"
-        png = client.get(item["png_url"])
         color = client.get(item["color_url"])
-        pdf = client.get(item["pdf_url"])
         color_pdf = client.get(item["color_pdf_url"])
         stored = client.app.state.services.storage.get_generation(generation_id)
-        Path(stored["pdf_path"]).unlink()
         Path(stored["color_pdf_path"]).unlink()
-        rebuilt_pdf = client.get(item["pdf_url"])
         rebuilt_color_pdf = client.get(item["color_pdf_url"])
-        print_page = client.get(item["print_url"])
-        pattern_print = client.get(item["pattern_print_url"])
+        converted_id = client.post(f"/api/generations/{generation_id}/coloring").json()["id"]
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            converted = client.get(f"/api/generations/{converted_id}").json()
+            if converted["status"] == "done":
+                break
+            time.sleep(0.02)
+        assert converted["status"] == "done"
+        png = client.get(converted["png_url"])
+        pdf = client.get(converted["pdf_url"])
+        Path(client.app.state.services.storage.get_generation(converted_id)["pdf_path"]).unlink()
+        rebuilt_pdf = client.get(converted["pdf_url"])
+        print_page = client.get(converted["print_url"])
         recent = client.get("/api/colorings")
 
     assert png.status_code == 200 and png.headers["content-type"].startswith("image/png")
@@ -110,8 +117,7 @@ def test_download_print_and_recent_endpoints(tmp_path: Path) -> None:
     assert rebuilt_pdf.status_code == 200 and rebuilt_pdf.content.startswith(b"%PDF")
     assert rebuilt_color_pdf.status_code == 200 and rebuilt_color_pdf.content.startswith(b"%PDF")
     assert print_page.status_code == 200 and "window.print()" in print_page.text
-    assert pattern_print.status_code == 200 and "Farebný vzor" in pattern_print.text
-    assert recent.json()[0]["id"] == generation_id
+    assert {item["id"] for item in recent.json()} >= {generation_id, converted_id}
 
 
 def test_completed_generations_remain_available_beyond_recent_window(tmp_path: Path) -> None:

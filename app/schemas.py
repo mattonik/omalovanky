@@ -89,6 +89,7 @@ class GenerationStatus(BaseModel):
     phase: Literal["queued", "generating", "processing", "done", "failed"] = "queued"
     completed_steps: int = 0
     total_steps: int = 1
+    source_generation_id: int | None = None
     png_url: str | None = None
     pdf_url: str | None = None
     color_pdf_url: str | None = None

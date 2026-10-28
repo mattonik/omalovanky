@@ -49,7 +49,7 @@ RUN_E2E=1 pytest -m e2e
 
 E2E testy používajú lokálny fake provider a nemíňajú OpenAI kredit.
 
-Pri omaľovánke možno vybrať 1 až 6 strán. Každá strana je samostatný generovaný obrázok; výsledný PDF obsahuje všetky strany v poradí a generovanie viacerých strán spotrebuje viac kreditu. Pri farebnom obrázku sú k dispozícii farebný aj omaľovánkový PDF.
+Pri omaľovánke možno vybrať 1 až 6 strán. Každá strana je samostatný generovaný obrázok; výsledný PDF obsahuje všetky strany v poradí a generovanie viacerých strán spotrebuje viac kreditu. Z farebného výsledku možno dodatočne vytvoriť omaľovánkový PDF. Táto voľba používa ďalšie volanie obrazového modelu pre každú stranu a spotrebuje ďalší kredit.
 
 ## Docker Compose
 
@@ -128,7 +128,7 @@ docker image prune -f
 - `GET /comics/{id}/pages/{page}/color.png`
 - `GET /comics/{id}/pages/{page}/line-art.png`
 
-Predvolený režim je `Priama omaľovánka`. Táto vetva ide cez jednu generáciu do OpenAI a potom sa lokálne rasterizuje na čiernobielu A4 stránku. Režim `Farebný základ` vytvorí farebný referenčný obrázok, z ktorého sa lokálne spraví omaľovánka; ak lokálne spracovanie zlyhá, worker môže použiť OpenAI `images.edit` s vloženým farebným zdrojom ako fallback.
+Predvolený režim je `Priama omaľovánka`. Táto vetva ide cez jednu generáciu do OpenAI a potom sa lokálne rasterizuje na čiernobielu A4 stránku. Režim `Farebný základ` vytvorí farebný obrázok. Omaľovánku z neho vytvorí samostatná úloha pomocou OpenAI `images.edit` iba na požiadanie.
 
 Príklad zadania:
 

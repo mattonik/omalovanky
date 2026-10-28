@@ -129,14 +129,47 @@ def test_multiple_pages_generate_one_pdf_and_reuse_completed_source(tmp_path: Pa
     result = storage.get_generation(job["id"])
     assert result["status"] == "done" and result["completed_steps"] == 2
     assert len(provider.generate_calls) == 1
-    for key in ("pdf_path", "color_pdf_path"):
-        assert len(re.findall(rb"/Type\s*/Page\b", Path(result[key]).read_bytes())) == 2
+    assert not provider.edit_calls
+    assert result["pdf_path"] is None
+    assert len(re.findall(rb"/Type\s*/Page\b", Path(result["color_pdf_path"]).read_bytes())) == 2
     with TestClient(create_app(settings, image_provider=provider, start_worker=False)) as client:
         status = client.get(f"/api/generations/{job['id']}").json()
         assert len(status["pages"]) == 2
         assert client.get(status["pages"][1]["color_url"]).status_code == 200
-        Path(result["pdf_path"]).unlink()
-        assert len(re.findall(rb"/Type\s*/Page\b", client.get(status["pdf_url"]).content)) == 2
+        queued = client.post(f"/api/generations/{job['id']}/coloring")
+        assert queued.status_code == 202
+        assert worker.process_one()
+        converted = client.get(f"/api/generations/{queued.json()['id']}").json()
+        assert len(provider.edit_calls) == 2
+        assert len(provider.generate_calls) == 1
+        assert len(re.findall(rb"/Type\s*/Page\b", client.get(converted["pdf_url"]).content)) == 2
+
+
+def test_color_first_processes_edited_outlines_not_dark_color_source(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path)
+    storage = Storage(settings.db_path)
+    storage.init_db()
+    request = GenerationRequest.model_validate(valid_payload(mode="color_first"))
+    job = storage.create_generation(request, build_color_preview_prompt(request))
+    provider = FakeImageProvider()
+    dark_image = io.BytesIO()
+    Image.new("RGB", (320, 420), (0, 0, 100)).save(dark_image, format="PNG")
+    provider.color_content = dark_image.getvalue()
+    worker = GenerationWorker(storage=storage, image_provider=provider, colorings_dir=settings.colorings_dir)
+
+    assert worker.process_one()
+    original = storage.get_generation(job["id"])
+    assert original["status"] == "done"
+    assert not provider.edit_calls
+    assert Path(original["color_path"]).read_bytes() == provider.color_content
+    converted_request = request.model_copy(update={"generation_mode": "line_art_direct"})
+    converted = storage.create_generation(converted_request, build_image_prompt(converted_request), source_generation_id=job["id"])
+    assert worker.process_one()
+    result = storage.get_generation(converted["id"])
+    assert result["status"] == "done"
+    assert len(provider.edit_calls) == 1
+    with Image.open(result["png_path"]) as image:
+        assert image.convert("L").getpixel((160, 210)) == 255
 
 
 def test_prompt_preview_matches_queued_request(tmp_path: Path) -> None:
@@ -228,16 +261,37 @@ def test_background_worker_processes_api_job(tmp_path: Path) -> None:
             time.sleep(0.02)
 
     assert status_payload["status"] == "done"
-    assert status_payload["png_url"] == f"/colorings/{generation_id}.png"
-    assert status_payload["pdf_url"] == f"/colorings/{generation_id}.pdf"
+    assert status_payload["png_url"] is None
+    assert status_payload["pdf_url"] is None
     assert status_payload["color_url"] == f"/colorings/{generation_id}/color.png"
     assert status_payload["color_pdf_url"] == f"/colorings/{generation_id}/color.pdf"
-    assert status_payload["pattern_print_url"] == f"/colorings/{generation_id}/print-pattern"
+    assert status_payload["pattern_print_url"] is None
     assert len(provider.generate_calls) == 1
     assert len(provider.edit_calls) == 0
 
 
-def test_color_first_falls_back_to_openai_edit_when_local_processing_fails(tmp_path: Path) -> None:
+def test_deferred_coloring_reuses_edited_outlines_on_restart(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path)
+    storage = Storage(settings.db_path)
+    storage.init_db()
+    request = GenerationRequest.model_validate(valid_payload(mode="color_first"))
+    original = storage.create_generation(request, build_color_preview_prompt(request))
+    request = request.model_copy(update={"generation_mode": "line_art_direct"})
+    job = storage.create_generation(request, build_image_prompt(request), source_generation_id=original["id"])
+    storage.claim_next_generation()
+    settings.colorings_dir.mkdir()
+    (settings.colorings_dir / f"{job['id']}-source.png").write_bytes(make_png_bytes())
+    provider = FakeImageProvider()
+    worker = GenerationWorker(storage=storage, image_provider=provider, colorings_dir=settings.colorings_dir)
+    assert worker.process_one()
+    completed = storage.get_generation(job["id"])
+    assert completed["status"] == "done"
+    assert not provider.generate_calls and not provider.edit_calls
+    with Image.open(completed["png_path"]) as result:
+        assert result.getpixel((result.width // 2, result.height // 2)) != 0
+
+
+def test_direct_generation_falls_back_to_openai_edit_when_local_processing_fails(tmp_path: Path) -> None:
     class FailingOnceProcessor:
         def __init__(self) -> None:
             self.calls = 0
@@ -265,8 +319,8 @@ def test_color_first_falls_back_to_openai_edit_when_local_processing_fails(tmp_p
     provider = FakeImageProvider()
     storage = Storage(settings.db_path)
     storage.init_db()
-    request = GenerationRequest.model_validate(valid_payload(mode="color_first"))
-    job = storage.create_generation(request, build_color_preview_prompt(request))
+    request = GenerationRequest.model_validate(valid_payload())
+    job = storage.create_generation(request, build_image_prompt(request))
     worker = GenerationWorker(
         storage=storage,
         image_provider=provider,
@@ -278,6 +332,6 @@ def test_color_first_falls_back_to_openai_edit_when_local_processing_fails(tmp_p
 
     completed = storage.get_generation(job["id"])
     assert completed["status"] == "done"
-    assert Path(completed["color_path"]).read_bytes() == provider.color_content
+    assert completed["color_path"] is None
     assert len(provider.generate_calls) == 1
     assert len(provider.edit_calls) == 1

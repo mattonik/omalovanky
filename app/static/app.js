@@ -142,6 +142,7 @@ document.querySelectorAll("[data-generation-mode]").forEach((button) => {
     document.querySelectorAll("[data-generation-mode]").forEach((candidate) => {
       setSelected(candidate, candidate === button);
     });
+    syncCreationMode();
   });
 });
 
@@ -372,7 +373,27 @@ function renderJobs() {
       error.className = "job-error";
       error.textContent = job.error;
       card.append(error);
-      if (data.request && !data.request.generic_characters) {
+      if (data.source_generation_id) {
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.textContent = "Skúsiť znova";
+        retry.addEventListener("click", async () => {
+          retry.disabled = true;
+          try {
+            const response = await fetch(`/api/generations/${data.source_generation_id}/coloring`, { method: "POST" });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || "Úlohu sa nepodarilo spustiť.");
+            trackJob({ id: result.id, kind: "generation" });
+          } catch (error) {
+            errorMessage.textContent = error.message;
+          } finally {
+            retry.disabled = false;
+          }
+        });
+        const errorMessage = document.createElement("small");
+        errorMessage.className = "job-error";
+        card.append(retry, errorMessage);
+      } else if (data.request && !data.request.generic_characters) {
         const note = document.createElement("small");
         note.className = "job-retry-note";
         note.textContent = "Názvy postáv vo vlastnom nápade sa nezmenia.";
@@ -425,6 +446,10 @@ async function showResult(item, isComic = false) {
   document.querySelector("#resultTitle").textContent = isComic ? "Knižka je hotová!" : item.request.generation_mode === "color_first" ? "Farebný obrázok je hotový!" : "Hotovo! Môžeme vyfarbovať.";
   document.querySelector("#comicInstructions").hidden = !isComic;
   const alternate = document.querySelector("#alternatePdfButton");
+  const createColoring = document.querySelector("#createColoringButton");
+  createColoring.hidden = isComic || item.request.generation_mode !== "color_first" || !item.color_url;
+  document.querySelector("#coloringCostNote").hidden = createColoring.hidden;
+  document.querySelector("#coloringJobError").hidden = true;
   alternate.hidden = true;
   if (isComic) {
     renderComicPages(item);
@@ -468,6 +493,25 @@ async function showResult(item, isComic = false) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   await loadRecent(item.id);
 }
+
+document.querySelector("#createColoringButton").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  const errorMessage = document.querySelector("#coloringJobError");
+  button.disabled = true;
+  errorMessage.hidden = true;
+  try {
+    const response = await fetch(`/api/generations/${state.current.id}/coloring`, { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || "Úlohu sa nepodarilo spustiť.");
+    trackJob({ id: result.id, kind: "generation" });
+    showBuilder();
+  } catch (error) {
+    errorMessage.textContent = error.message;
+    errorMessage.hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+});
 
 function renderComicPages(item) {
   elements.comicPages.replaceChildren();
@@ -589,5 +633,7 @@ function syncCreationMode() {
     : " Vytvoriť omaľovánku";
   elements.generationEstimate.innerHTML = isComic
     ? "◷ 6 obrázkov <span>•</span> niekoľko minút"
-    : `◷ ${state.pageCount || 1} obrázkov <span>•</span> približne ${state.pageCount || 1} minút`;
+    : state.generationMode === "color_first"
+      ? `◷ ${state.pageCount || 1} strán <span>•</span> omaľovánku môžeš vytvoriť dodatočne`
+      : `◷ ${state.pageCount || 1} obrázkov <span>•</span> približne ${state.pageCount || 1} minút`;
 }

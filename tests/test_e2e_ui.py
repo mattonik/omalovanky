@@ -30,6 +30,9 @@ class FixtureImageProvider:
     def generate(self, prompt: str, orientation: str) -> GeneratedImage:
         return GeneratedImage(self.fixture_path.read_bytes(), "req-e2e-fixture")
 
+    def edit(self, source_path: Path, prompt: str, orientation: str) -> GeneratedImage:
+        return GeneratedImage(self.fixture_path.read_bytes(), "req-e2e-edit")
+
 
 def find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -123,7 +126,11 @@ def test_builder_to_printable_result_flow(live_app: str, tmp_path: Path) -> None
         assert page.locator("#builderView").is_visible()
         assert page.locator("#generationSettings").evaluate("element => document.activeElement === element")
         assert page.get_by_role("button", name="Detailná").get_attribute("aria-pressed") == "true"
-        assert page.locator("#recentSection").bounding_box()["y"] + page.locator("#recentSection").bounding_box()["height"] <= page.locator(".mode-switch").bounding_box()["y"]
+        page.wait_for_function("""() => {
+          const recent = document.querySelector('#recentSection').getBoundingClientRect();
+          const mode = document.querySelector('.mode-switch').getBoundingClientRect();
+          return recent.bottom <= mode.top;
+        }""")
         assert not console_errors
 
         screenshot = tmp_path / "result.png"
@@ -152,6 +159,25 @@ def test_mobile_builder_has_no_horizontal_overflow(live_app: str) -> None:
 
         assert has_overflow is False
         assert page.get_by_role("button", name="Bleskový McQueen").get_attribute("aria-pressed") == "true"
+        browser.close()
+
+
+def test_coloring_from_color_is_a_separate_tracked_job(live_app: str) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(live_app, wait_until="networkidle")
+        page.get_by_role("button", name="Farebný obrázok").click()
+        page.get_by_role("button", name="Vytvoriť omaľovánku").click()
+        page.get_by_role("button", name="Otvoriť").click(timeout=15000)
+        page.get_by_role("heading", name="Farebný obrázok je hotový!").wait_for(timeout=10000)
+        assert page.get_by_role("link", name="Stiahnuť farebné PDF").is_visible()
+        page.get_by_role("button", name="Vytvoriť omaľovánku z obrázka").click()
+        page.reload()
+        page.get_by_text("Omaľovánka #2").wait_for(timeout=15000)
+        page.locator(".job-card").filter(has_text="Omaľovánka #2").get_by_role("button", name="Otvoriť").click(timeout=15000)
+        page.get_by_role("heading", name="Hotovo! Môžeme vyfarbovať.").wait_for(timeout=10000)
+        assert page.get_by_role("link", name="Stiahnuť PDF", exact=True).is_visible()
         browser.close()
 
 

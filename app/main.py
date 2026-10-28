@@ -145,6 +145,19 @@ def create_app(
         except GenerationNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.post("/api/generations/{generation_id}/coloring", response_model=GenerationStatus, status_code=status.HTTP_202_ACCEPTED)
+    def create_coloring_from_color(generation_id: int):
+        item = require_completed_generation(storage, generation_id)
+        if not item["color_path"]:
+            raise HTTPException(status_code=400, detail="Farebná verzia nie je k dispozícii.")
+        request = GenerationRequest.model_validate(item["request"]).model_copy(update={"generation_mode": "line_art_direct"})
+        try:
+            result = storage.create_generation(request, build_image_prompt(request), source_generation_id=generation_id)
+        except QueueFullError as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from exc
+        worker.wake()
+        return serialize_generation(result)
+
     @app.get("/api/comics/{comic_id}", response_model=ComicStatus)
     def get_comic(comic_id: int):
         try:
@@ -301,11 +314,12 @@ def serialize_generation(item: dict) -> GenerationStatus:
         phase=item["phase"],
         completed_steps=item["completed_steps"],
         total_steps=item["total_steps"],
+        source_generation_id=item.get("source_generation_id"),
         png_url=f"/colorings/{generation_id}.png" if done and item["png_path"] else None,
         pdf_url=f"/colorings/{generation_id}.pdf" if done and (item["pdf_path"] or item["png_path"]) else None,
         color_pdf_url=f"/colorings/{generation_id}/color.pdf" if done and (item["color_pdf_path"] or item["color_path"]) else None,
         color_url=f"/colorings/{generation_id}/color.png" if done and item["color_path"] else None,
-        pages=[{"page_number": page, "line_art_url": f"/colorings/{generation_id}/pages/{page}/line-art.png", "color_url": f"/colorings/{generation_id}/pages/{page}/color.png" if item["color_path"] else None} for page in range(1, request.page_count + 1)] if done else [],
+        pages=[{"page_number": page, "line_art_url": f"/colorings/{generation_id}/pages/{page}/line-art.png" if item["png_path"] else None, "color_url": f"/colorings/{generation_id}/pages/{page}/color.png" if item["color_path"] else None} for page in range(1, request.page_count + 1)] if done else [],
         print_url=f"/colorings/{generation_id}/print" if done and item["png_path"] else None,
         pattern_print_url=f"/colorings/{generation_id}/print-pattern"
         if done and item["png_path"] and item["color_path"]

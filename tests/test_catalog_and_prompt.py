@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.catalog import CHARACTER_BY_ID, catalog_payload
-from app.prompting import build_color_preview_prompt, build_image_prompt, build_line_art_edit_prompt, build_comic_page_prompts
+from app.prompting import build_color_preview_prompt, build_image_prompt, build_line_art_edit_prompt, build_comic_page_prompts, generation_page_prompts
 from app.schemas import ComicRequest, GenerationRequest
 
 
@@ -168,6 +168,18 @@ def test_complexity_applies_to_generation_and_edit(level: str, phrase: str) -> N
 def test_invalid_complexity_is_rejected() -> None:
     with pytest.raises(ValidationError):
         GenerationRequest(action="playing", complexity="unknown")
+
+
+def test_multiple_pages_have_distinct_scene_directions() -> None:
+    request = GenerationRequest(characters=["princess", "skye"], scenes=["beach"], action="playing", page_count=6)
+    prompts = generation_page_prompts(request, build_image_prompt(request))
+    assert len(prompts) == 6
+    assert len(set(prompts)) == 6
+    assert "begin their shared activity" in prompts[0]
+    assert "explore and discover something surprising" in prompts[1]
+    assert all("Skye from PAW Patrol" in prompt and "a simple calm beach" in prompt for prompt in prompts)
+    single = request.model_copy(update={"page_count": 1})
+    assert generation_page_prompts(single, "original prompt") == ["original prompt"]
 
 
 @pytest.mark.parametrize(

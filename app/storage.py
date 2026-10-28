@@ -128,6 +128,7 @@ class Storage:
                 ("phase", "TEXT NOT NULL DEFAULT 'queued'"),
                 ("completed_steps", "INTEGER NOT NULL DEFAULT 0"),
                 ("total_steps", "INTEGER NOT NULL DEFAULT 1"),
+                ("source_generation_id", "INTEGER"),
             ):
                 if column not in columns:
                     connection.execute(f"ALTER TABLE generations ADD COLUMN {column} {definition}")
@@ -143,17 +144,17 @@ class Storage:
                 if column not in comic_columns:
                     connection.execute(f"ALTER TABLE comic_generations ADD COLUMN {column} {definition}")
 
-    def create_generation(self, request: GenerationRequest, prompt: str) -> dict[str, Any]:
+    def create_generation(self, request: GenerationRequest, prompt: str, source_generation_id: int | None = None) -> dict[str, Any]:
         now = utc_now()
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             self._check_queue(connection)
             cursor = connection.execute(
                 """
-                INSERT INTO generations(status, request_json, prompt, created_at, updated_at, total_steps)
-                VALUES ('queued', ?, ?, ?, ?, ?)
+                INSERT INTO generations(status, request_json, prompt, created_at, updated_at, total_steps, source_generation_id)
+                VALUES ('queued', ?, ?, ?, ?, ?, ?)
                 """,
-                (request.model_dump_json(), prompt, now, now, request.page_count),
+                (request.model_dump_json(), prompt, now, now, request.page_count, source_generation_id),
             )
             generation_id = int(cursor.lastrowid)
             connection.commit()
@@ -398,7 +399,7 @@ class Storage:
             rows = connection.execute(
                 """
                 SELECT * FROM generations
-                WHERE status = 'done' AND png_path IS NOT NULL
+                WHERE status = 'done' AND (png_path IS NOT NULL OR color_path IS NOT NULL)
                 ORDER BY completed_at DESC, id DESC
                 LIMIT ? OFFSET ?
                 """,

@@ -273,6 +273,9 @@
               Stiahnuť PDF
             </a>
             <a id="alternatePdfButton" class="result-button outline" download hidden>Stiahnuť druhú verziu PDF</a>
+            <button id="createColoringButton" class="result-button outline" type="button" hidden>Vytvoriť omaľovánku z obrázka</button>
+            <p id="coloringCostNote" class="retention-note" hidden>Omaľovánka vyžaduje ďalšie generovanie a kredit pre každú stranu.</p>
+            <p id="coloringJobError" class="job-error" role="alert" hidden></p>
             <p id="comicInstructions" class="retention-note" hidden>Vytlač na šírku v skutočnej veľkosti. Prelož list na polovicu a potom na štvrtiny; rozlož ho, nastrihni stredový záhyb a zlož do knižky.</p>
             <button id="similarButton" class="result-button outline" type="button">
               <span aria-hidden="true">✦</span>
@@ -292,6 +295,6 @@
     </div>
 
     <script id="catalogData" type="application/json">{{ catalog | tojson }}</script>
-    <script type="module" src="/static/app.js?v=20261028g"></script>
+    <script type="module" src="/static/app.js?v=20261028i"></script>
   </body>
 </html>
