@@ -173,6 +173,7 @@ def test_coloring_from_color_is_a_separate_tracked_job(live_app: str) -> None:
         page.get_by_role("heading", name="Farebný obrázok je hotový!").wait_for(timeout=10000)
         assert page.get_by_role("link", name="Stiahnuť farebné PDF").is_visible()
         page.get_by_role("button", name="Vytvoriť omaľovánku z obrázka").click()
+        page.get_by_text("Omaľovánka #2").wait_for(timeout=15000)
         page.reload()
         page.get_by_text("Omaľovánka #2").wait_for(timeout=15000)
         page.locator(".job-card").filter(has_text="Omaľovánka #2").get_by_role("button", name="Otvoriť").click(timeout=15000)
